@@ -1,0 +1,337 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Recycle, Camera, IndianRupee, MapPin, Package, WalletCards,
+  ArrowRight, CheckCircle2, ShieldCheck, TrendingUp, QrCode,
+  Search, X, Leaf, Smartphone, Laptop, Battery, Cable, CircuitBoard,
+  ChevronRight, Clock3, Truck, CircleAlert, ScanLine, Banknote,
+  Languages, Menu, XCircle
+} from "lucide-react";
+import { materialService, priceService, recyclerService } from "./services/api";
+import "./App.css";
+
+const MATERIAL_ICONS = {
+  "Mobile Phone": Smartphone,
+  Smartphone,
+  Laptop,
+  "Computer Monitor": Laptop,
+  Battery,
+  "Printed Circuit Board": CircuitBoard,
+  "Copper Cable": Cable,
+};
+
+function materialIcon(material) {
+  return MATERIAL_ICONS[material.deviceType] || MATERIAL_ICONS[material.commonName] || Recycle;
+}
+
+const copy = {
+  en: {
+    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", earnings: "Your earnings ledger" },
+    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "My Earnings"],
+    greeting: "Good afternoon, Sachin", dashboardTitle: "Turn e-waste materials into traceable value.",
+    dashboardText: "Identify electronic devices, see a fair price, find an authorized recycler and keep a digital earnings record.",
+    scan: "Scan e-waste", prices: "Check prices", viewAll: "View all", quickActions: "Quick actions", startWorkflow: "Start a collection workflow",
+  },
+  hi: {
+    pageTitles: { scan: "ई-वेस्ट सामग्री पहचानें", prices: "आज के उचित भाव", recyclers: "पास के अधिकृत रीसाइकलर", lots: "आपके डिजिटल सामग्री लॉट", earnings: "आपकी कमाई का रिकॉर्ड" },
+    nav: ["डैशबोर्ड", "ई-वेस्ट स्कैन", "आज के भाव", "रीसाइकलर खोजें", "मेरे लॉट", "मेरी कमाई"],
+    greeting: "नमस्ते, सचिन", dashboardTitle: "ई-वेस्ट सामग्री को रिकॉर्ड योग्य मूल्य में बदलें।",
+    dashboardText: "इलेक्ट्रॉनिक उपकरण पहचानें, उचित भाव देखें, अधिकृत रीसाइकलर खोजें और कमाई का डिजिटल रिकॉर्ड रखें।",
+    scan: "ई-वेस्ट स्कैन करें", prices: "भाव देखें", viewAll: "सभी देखें", quickActions: "त्वरित कार्य", startWorkflow: "संग्रह प्रक्रिया शुरू करें",
+  },
+};
+
+function speak(text, language = "en-IN") {
+  if (typeof window === "undefined" || !window.speechSynthesis) return false;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = language;
+  utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+  return true;
+}
+
+function SpokenButton({ text, hindi = false }) {
+  return <button className="outline tiny" type="button" onClick={() => speak(text, hindi ? "hi-IN" : "en-IN")} title={hindi ? "भाव सुनें" : "Speak rate"}><span aria-hidden="true">🔊</span> {hindi ? "सुनें" : "Listen"}</button>;
+}
+
+function priceSummary(records) {
+  if (!records?.length) return null;
+  const rates = records.map(record => Number(record.rate)).filter(Number.isFinite);
+  if (!rates.length) return null;
+  const latest = records.reduce((current, record) => record.quoted_at > current.quoted_at ? record : current, records[0]);
+  return {
+    min: Math.min(...rates),
+    max: Math.max(...rates),
+    unit: latest.unit,
+    location: latest.location,
+    source: latest.source_type,
+    quotedAt: latest.quoted_at,
+    verified: records.every(record => record.verification_status === "VERIFIED"),
+    count: records.length,
+  };
+}
+
+export default function App() {
+  const [active, setActive] = useState("home");
+  const [lots] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [materialStatus, setMaterialStatus] = useState("loading");
+  const [material, setMaterial] = useState("");
+  const [priceRecords, setPriceRecords] = useState({});
+  const [priceStatus, setPriceStatus] = useState("loading");
+  const [recyclerMatches, setRecyclerMatches] = useState([]);
+  const [recyclerStatus, setRecyclerStatus] = useState("loading");
+  const [weight, setWeight] = useState("1.5");
+  const [photo, setPhoto] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [hindi, setHindi] = useState(false);
+  const [tokenLot, setTokenLot] = useState(null);
+  const fileRef = useRef();
+  const language = hindi ? copy.hi : copy.en;
+
+  useEffect(() => {
+    let mounted = true;
+    materialService.getAll()
+      .then(data => {
+        if (!mounted) return;
+        setMaterials(Array.isArray(data) ? data : []);
+        setMaterialStatus("ready");
+        if (data?.length) setMaterial(data[0].commonName);
+      })
+      .catch(() => mounted && setMaterialStatus("error"));
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const selectedMaterial = materials.find(item => item.commonName === material);
+    if (!selectedMaterial) return;
+    let mounted = true;
+    setRecyclerStatus("loading");
+    recyclerService.match(selectedMaterial.id, "Indore")
+      .then(data => { if (mounted) { setRecyclerMatches(Array.isArray(data) ? data : []); setRecyclerStatus("ready"); } })
+      .catch(() => mounted && setRecyclerStatus("error"));
+    return () => { mounted = false; };
+  }, [materials, material]);
+
+  useEffect(() => {
+    let mounted = true;
+    setPriceStatus("loading");
+    priceService.getCurrent({ location: "Indore" })
+      .then(data => {
+        if (!mounted) return;
+        setPriceRecords((Array.isArray(data) ? data : []).reduce((grouped, record) => {
+          (grouped[record.material_id] ||= []).push(record);
+          return grouped;
+        }, {}));
+        setPriceStatus("ready");
+      })
+      .catch(() => mounted && setPriceStatus("error"));
+    return () => { mounted = false; };
+  }, []);
+
+  const completed = lots.filter(l => l.status === "Completed");
+  const pending = lots.filter(l => l.status !== "Completed");
+  const total = completed.reduce((s, l) => s + l.value, 0);
+  const totalWeight = lots.reduce((s, l) => s + Number(l.weight || 0), 0);
+
+  const notify = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 4500); };
+
+  const scanPhoto = () => {
+    notify(hindi ? "AI पहचान अभी उपलब्ध नहीं है। कृपया सामग्री चुनें।" : "AI classification is unavailable. Please select the material.");
+  };
+
+  const createLot = () => {
+    notify(hindi ? "लॉट बनाने की सुविधा अगले चरण में उपलब्ध होगी।" : "Lot creation will be connected to the backend in the next phase.");
+  };
+
+  const navigate = (id) => { setActive(id); setMobileMenu(false); };
+
+  return (
+    <div className="app">
+      <aside className={`sidebar ${mobileMenu ? "open" : ""}`}>
+        <div>
+          <div className="brand">
+            <div className="brand-icon"><Recycle size={25}/></div>
+            <div><b>E-Waste Saathi</b><span>Collector Portal</span></div>
+            <button className="mobile-close" onClick={() => setMobileMenu(false)}><X size={18}/></button>
+          </div>
+          <nav>
+            {[["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["earnings", WalletCards]].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
+          </nav>
+        </div>
+        <div className="trust-card">
+          <ShieldCheck size={22}/>
+          <b>{hindi ? "सुरक्षित और औपचारिक रीसाइक्लिंग" : "Safer formal recycling"}</b>
+          <p>{hindi ? "सही भाव जानें और हर handover का रिकॉर्ड रखें।" : "Know the fair value and keep a traceable handover record."}</p>
+        </div>
+      </aside>
+
+      <main className="main">
+        <header className="topbar">
+          <button className="menu-btn" onClick={() => setMobileMenu(true)}><Menu size={21}/></button>
+          <div>
+            <div className="eyebrow">INDORE • COLLECTOR ACCOUNT</div>
+            <h1>{active === "home" ? `${language.greeting} 👋` : language.pageTitles[active]}</h1>
+          </div>
+          <div className="top-actions">
+            <button className="lang-btn" onClick={() => setHindi(v => !v)}><Languages size={16}/> {hindi ? "EN" : "हिंदी"}</button>
+            <div className="profile">SN</div>
+          </div>
+        </header>
+
+        {notice && <div className="notice"><CheckCircle2 size={18}/><span>{notice}</span><button onClick={() => setNotice("")}><X size={16}/></button></div>}
+
+        {active === "home" && <Dashboard total={total} weight={totalWeight} lots={lots} pending={pending} setActive={navigate} hindi={hindi} language={language}/>} 
+        {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} setPhoto={setPhoto} fileRef={fileRef} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus}/>} 
+        {active === "prices" && <Prices hindi={hindi} materials={materials} priceRecords={priceRecords} priceStatus={priceStatus}/>} 
+        {active === "recyclers" && <Recyclers material={material} matches={recyclerMatches} status={recyclerStatus} hindi={hindi}/>} 
+        {active === "lots" && <Lots lots={lots} setActive={navigate} hindi={hindi}/>} 
+        {active === "earnings" && <Earnings total={total} lots={lots} hindi={hindi}/>} 
+      </main>
+
+      <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19}/> {hindi ? "स्कैन" : "Scan"}</button>
+      {tokenLot && <TokenModal lot={tokenLot} hindi={hindi} onClose={() => setTokenLot(null)} />}
+    </div>
+  );
+}
+
+function Nav({active,id,label,icon,setActive}) {
+  return <button className={active===id ? "nav active" : "nav"} onClick={() => setActive(id)}>{icon}<span>{label}</span>{active===id && <ChevronRight size={15}/>}</button>;
+}
+
+function Dashboard({total, weight, lots, pending, setActive, hindi, language}) {
+  return <section className="content">
+    <div className="hero-card dashboard-hero">
+      <div className="hero-copy"><span className="pill">VERNACULAR • OFFLINE-FRIENDLY</span><h2>{language.dashboardTitle}</h2><p>{language.dashboardText}</p><div className="hero-actions"><button className="primary" onClick={() => setActive("scan")}><Camera size={18}/> {language.scan}</button><button className="hero-secondary" onClick={() => setActive("prices")}><IndianRupee size={17}/> {language.prices}</button></div></div>
+      <div className="hero-visual"><div className="hero-orbit orbit-a"></div><div className="hero-orbit orbit-b"></div><div className="hero-symbol big"><Leaf size={66}/></div><span className="floating-chip chip-1">{hindi ? "डेटा" : "DATA"}</span><span className="floating-chip chip-2">{hindi ? "रिक्त" : "EMPTY"}</span></div>
+    </div>
+
+    <div className="stats">
+      <Stat label="Total earnings" value={`₹${total.toLocaleString("en-IN")}`} icon={<IndianRupee/>} />
+      <Stat label="E-waste collected" value={`${weight.toFixed(1)} kg`} icon={<Recycle/>} />
+      <Stat label="Digital lots" value={lots.length} icon={<Package/>} />
+      <Stat label="Pending handovers" value={pending.length} icon={<Clock3/>} />
+    </div>
+
+    <div className="two-col">
+      <div className="panel">
+        <div className="section-head"><div><h3>{hindi ? "हाल के डिजिटल लॉट" : "Recent digital lots"}</h3><p>{hindi ? "संग्रह → रीसाइकलर → भुगतान रिकॉर्ड" : "Collection → recycler → payment trail"}</p></div><button className="link" onClick={() => setActive("lots")}>{language.viewAll}</button></div>
+        {lots.slice(0,3).map(l => <LotRow key={l.id} lot={l}/>) }
+      </div>
+      <div className="panel">
+        <div className="section-head"><div><h3>{language.quickActions}</h3><p>{language.startWorkflow}</p></div></div>
+        <Action onClick={() => setActive("scan")} icon={<ScanLine/>} title={hindi ? "ई-वेस्ट सामग्री पहचानें" : "Identify e-waste"} text={hindi ? "फोटो + AI श्रेणी" : "Photo + AI-assisted category"} />
+        <Action onClick={() => setActive("prices")} icon={<Banknote/>} title={hindi ? "उचित भाव देखें" : "Check fair price"} text={hindi ? "क्षेत्रीय दरों की तुलना" : "Compare reference ranges"} />
+        <Action onClick={() => setActive("recyclers")} icon={<Truck/>} title={hindi ? "रीसाइकलर खोजें" : "Find recycler"} text={hindi ? "इंदौर के सत्यापित साझेदार" : "Verified partners near Indore"} />
+      </div>
+    </div>
+
+    <div className="workflow panel">
+      <div className="section-head"><div><span className="pill light">CORE WORKFLOW</span><h3>{hindi ? "ई-वेस्ट सामग्री से सत्यापित भुगतान तक" : "From e-waste material to verified payment"}</h3></div></div>
+      <div className="steps">
+        <Step n="01" icon={<Camera/>} title="Photo" text="Capture item" />
+        <Step n="02" icon={<ScanLine/>} title="Identify" text="AI + confirm" />
+        <Step n="03" icon={<IndianRupee/>} title="Fair price" text="Reference range" />
+        <Step n="04" icon={<Package/>} title="Digital lot" text="Unique ID" />
+        <Step n="05" icon={<ShieldCheck/>} title="Handover" text="Verify + record" />
+      </div>
+    </div>
+  </section>;
+}
+
+function ScanPage({materials,materialStatus,material,setMaterial,weight,setWeight,photo,setPhoto,fileRef,scanPhoto,createLot,hindi,priceRecords,priceStatus}) {
+  const selectedMaterial = materials.find(item => item.commonName === material);
+  const summary = selectedMaterial ? priceSummary(priceRecords[selectedMaterial.id]) : null;
+  const safetyText = hindi ? "सुरक्षित हैंडओवर के लिए सामग्री को न जलाएं और बैटरी को सावधानी से रखें।" : "Do not burn materials. Store batteries safely and use a verified process when available.";
+  const materialContent = materialStatus === "loading"
+    ? <div className="empty"><span>Loading materials...</span></div>
+    : materialStatus === "error"
+      ? <div className="empty"><span>Unable to load materials. Please try again.</span></div>
+      : materials.length === 0
+        ? <div className="empty"><span>No materials available.</span></div>
+        : <div className="material-list">{materials.map(item => { const Icon = materialIcon(item); return <button className={material === item.commonName ? "material selected" : "material"} key={item.id} onClick={() => setMaterial(item.commonName)}><span className="material-icon"><Icon size={18}/></span><span>{item.commonName}</span>{material === item.commonName && <CheckCircle2 size={16}/>} </button>; })}</div>;
+  return <section className="content">
+    <div className="hero-card compact-hero"><div><span className="pill">MATERIAL MASTER</span><h2>{hindi ? "ई-वेस्ट सामग्री चुनें" : "Select your e-waste material"}</h2><p>{hindi ? "फोटो लें, सामग्री की पुष्टि करें और वजन भरें।" : "Capture a photo, confirm the material from the database, and enter weight."}</p></div><div className="hero-symbol"><Camera size={40}/></div></div>
+    <div className="scan-grid">
+      <div className="panel upload-panel">
+        <div className="panel-title"><div><h3>1. {hindi ? "उपकरण की फोटो लें" : "Capture device"}</h3><p>{hindi ? "साधारण Android फोन पर भी काम करता है" : "Photo works on entry-level Android"}</p></div><Camera size={20}/></div>
+        <div className={`dropzone ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { if (e.target.files?.[0]) setPhoto(URL.createObjectURL(e.target.files[0])); }}/>
+          {photo ? <><img src={photo} className="preview" alt="Uploaded electronic device"/><span className="photo-label">{hindi ? "फोटो तैयार" : "Photo ready"}</span></> : <><div className="upload-icon"><Camera size={28}/></div><b>{hindi ? "फोटो अपलोड / कैमरा खोलें" : "Upload / capture photo"}</b><span>JPG or PNG • {hindi ? "कहीं भी टैप करें" : "tap anywhere"}</span></>}
+        </div>
+        <button className="outline wide" onClick={scanPhoto}><ScanLine size={18}/> {hindi ? "सामग्री चुनें" : "Choose material"}</button>
+        <div className="demo-note"><CircleAlert size={15}/><span>{hindi ? "AI पहचान अभी उपलब्ध नहीं है।" : "AI classification is not available yet. Select the material yourself."}</span></div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-title"><div><h3>2. {hindi ? "सामग्री चुनें" : "Select material"}</h3><p>{hindi ? "डेटाबेस की सामग्री सूची" : "Materials from the database"}</p></div><CheckCircle2 size={20}/></div>
+        {materialContent}
+      </div>
+    </div>
+
+    <div className="panel result">
+      <div className="result-head"><div><span className="pill">READY TO REVIEW</span><h2>{selectedMaterial?.commonName || (hindi ? "सामग्री उपलब्ध नहीं" : "No material selected")}</h2><p>{selectedMaterial?.recoverableMaterials || (hindi ? "डेटाबेस से सामग्री चुनें" : "Select a material from the database")}</p></div></div>
+      <div className="form-row">
+        <label>{hindi ? "वजन (किलो)" : "Weight (kg)"}<input type="number" min="0" step="0.1" value={weight} onChange={e => setWeight(e.target.value)}/></label>
+        <div className="estimate"><span>{hindi ? "स्थानीय अनुमानित मूल्य" : "Estimated local value"}</span><strong>{priceStatus === "loading" ? (hindi ? "भाव लोड हो रहे हैं..." : "Loading prices...") : priceStatus === "error" ? (hindi ? "भाव लोड नहीं हो सके" : "Unable to load prices. Please try again.") : summary ? `₹${Math.round(Number(weight || 0) * summary.min)}–₹${Math.round(Number(weight || 0) * summary.max)} (${summary.unit})` : (hindi ? "स्थानीय भाव आवश्यक" : "Price data unavailable — local quote required")}</strong><small>{summary ? `${summary.verified ? (hindi ? "सत्यापित" : "Verified") : (hindi ? "असत्यापित" : "Unverified")} • ${summary.count} ${hindi ? "स्थानीय भाव" : "local quotes"}` : (hindi ? "दर उपलब्ध होने पर मूल्य दिखेगा" : "No rate is shown without a local price record")}</small></div>
+      </div>
+      <div className="safety"><ShieldCheck size={19}/><div><b>{hindi ? "सुरक्षा मार्गदर्शन" : "Safety guidance"}</b><span>{safetyText}</span></div><SpokenButton text={safetyText} hindi={hindi}/></div>
+      <button className="primary wide" onClick={createLot} disabled={!selectedMaterial || !Number(weight)}><Package size={18}/> {hindi ? "डिजिटल लॉट बनाएं" : "Create digital lot"} <ArrowRight size={18}/></button>
+    </div>
+  </section>;
+}
+
+function Prices({hindi,materials,priceRecords,priceStatus}) {
+  const statusText = priceStatus === "loading" ? (hindi ? "भाव लोड हो रहे हैं..." : "Loading prices...") : priceStatus === "error" ? (hindi ? "भाव लोड नहीं हो सके। कृपया फिर कोशिश करें।" : "Unable to load prices. Please try again.") : "";
+  return <section className="content"><div className="section-head page-section"><div><span className="pill">PRICE DATA</span><h2>{hindi ? "आज की सामग्री दरें" : "Today's material prices"}</h2><p>{hindi ? "इंदौर के वास्तविक स्थानीय रिकॉर्ड से पारदर्शी दरें।" : "Transparent rates from real local records in Indore."}</p></div></div>{priceStatus !== "ready" ? <div className="empty panel"><CircleAlert size={23}/><span>{statusText}</span></div> : <div className="price-grid">{materials.map(material => <PriceCard key={material.id} material={material} summary={priceSummary(priceRecords[material.id])} hindi={hindi}/>)}</div>}</section>;
+}
+
+function PriceCard({material,summary,hindi}) {
+  const Icon = materialIcon(material);
+  if (!summary) return <div className="price-card"><div className="price-icon"><Icon size={23}/></div><b>{material.commonName}</b><span>{hindi ? "स्थानीय रिकॉर्ड" : "Local record"}</span><strong>{hindi ? "स्थानीय भाव आवश्यक" : "Price data unavailable — local quote required"}</strong></div>;
+  const rateText = `${material.commonName}: ${summary.min} to ${summary.max} ${summary.unit} in ${summary.location}`;
+  return <div className="price-card"><div className="price-icon"><Icon size={23}/></div><b>{material.commonName}</b><span>{summary.location} • {summary.unit}</span><strong>₹{summary.min}–₹{summary.max} / {summary.unit}</strong><small>{summary.verified ? (hindi ? "सत्यापित" : "Verified") : (hindi ? "असत्यापित" : "Unverified")} • {summary.count} {hindi ? "स्थानीय भाव" : "local quotes"}</small><small>{hindi ? "अपडेट" : "Updated"} {new Date(summary.quotedAt).toLocaleDateString("en-IN")} • {summary.source}</small><SpokenButton text={rateText} hindi={hindi}/></div>;
+}
+
+function RecyclersEmpty({hindi}) {
+  return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "इस चरण में सत्यापित रीसाइकलर उपलब्ध नहीं हैं।" : "No verified recycler available for this material/location"}</span></div></section>;
+}
+
+function Recyclers({material,matches,status,hindi}) {
+  if (status === "loading") return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "रीसाइकलर खोजे जा रहे हैं..." : "Finding recyclers..."}</span></div></section>;
+  if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "रीसाइकलर लोड नहीं हो सके। कृपया फिर कोशिश करें।" : "Unable to load recyclers. Please try again."}</span></div></section>;
+  return <section className="content"><div className="map-banner"><MapPin size={24}/><div><b>{hindi ? "इंदौर रीसाइकलर मैच" : "Indore recycler matches"}</b><span>{hindi ? `${material} स्वीकार करने वाले वास्तविक रिकॉर्ड` : `Live records accepting ${material}`}</span></div></div>{matches.length === 0 ? <div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "इस सामग्री/स्थान के लिए अधिकृत रीसाइकलर उपलब्ध नहीं है" : "No verified recycler available for this material/location"}</span></div> : <div className="recycler-list">{matches.map(recycler => { const verified = recycler.authorization_status === "VERIFIED"; return <div className="recycler" key={recycler.id}><div className="recycler-logo"><Recycle size={24}/></div><div className="recycler-info"><div><b>{recycler.business_name}</b><span className={verified ? "verified" : "pending-badge"}><ShieldCheck size={12}/> {verified ? (hindi ? "सत्यापित" : "Verified") : (hindi ? "सत्यापन लंबित" : "Pending Verification — not yet confirmed")}</span></div><span>{recycler.city}{recycler.service_area ? ` • ${recycler.service_area}` : ""}</span><small>{recycler.accepted_materials.map(item => item.common_name).join(", ")}</small><small>{recycler.pickup_available ? (hindi ? "पिकअप उपलब्ध" : "Pickup available") : (hindi ? "पिकअप उपलब्ध नहीं" : "Pickup unavailable")}{recycler.pickup_radius ? ` • ${recycler.pickup_radius} km radius` : ""}</small></div></div>; })}</div>}</section>;
+}
+
+function LegacyRecyclers({material,selectedRecycler,assignRecycler,hindi,matches}) {
+  const [query, setQuery] = useState("");
+  const [refreshed, setRefreshed] = useState(false);
+  const visibleMatches = matches.filter(recycler => `${recycler.name} ${recycler.area}`.toLowerCase().includes(query.toLowerCase()));
+  const speakNetwork = hindi ? `इंदौर में ${material} के लिए अधिकृत रीसाइकलर खोजे जा रहे हैं।` : `Searching authorized Indore recyclers for ${material}.`;
+  return <section className="content"><div className="map-banner"><MapPin size={24}/><div><b>{hindi ? "इंदौर अधिकृत रीसाइकलर नेटवर्क" : "Indore authorized recycler network"}</b><span>{hindi ? `${material} के लिए दूरी और क्षेत्रीय दर के आधार पर मैच` : `Matches ranked by distance and regional rate for ${material}`}</span></div><SpokenButton text={speakNetwork} hindi={hindi}/><button className="outline" type="button" onClick={() => setRefreshed(true)}><Search size={16}/> {hindi ? "फिर खोजें" : "Refresh"}</button></div>{refreshed && <div className="notice inline-notice"><CheckCircle2 size={16}/><span>{hindi ? "इंदौर नेटवर्क अपडेट हो गया।" : "Indore partner network refreshed."}</span></div>}<div className="panel recycler-tools"><label><Search size={16}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder={hindi ? "नाम या क्षेत्र खोजें" : "Search by name or area"}/></label><span>{visibleMatches.length} {hindi ? "अधिकृत परिणाम" : "authorized results"}</span></div><div className="recycler-list">{visibleMatches.map((r, index) => <div className={`recycler ${selectedRecycler===r.name ? "chosen" : ""}`} key={r.name}><div className="recycler-logo"><Recycle size={24}/></div><div className="recycler-info"><div><b>{r.name}</b><span className="verified"><ShieldCheck size={12}/> {hindi ? "अधिकृत" : "Authorized"}</span>{index === 0 && <span className="verified">{hindi ? "सर्वश्रेष्ठ मैच" : "Best match"}</span>}</div><span>{r.area} • {r.distance} {hindi ? "दूर" : "away"} • {r.acceptsMaterial ? (hindi ? "सामग्री स्वीकार करता है" : "accepts this material") : (hindi ? "अन्य सामग्री" : "other materials")}</span><small>{r.address} • {hindi ? "लाइसेंस" : "License"} {r.license}</small><small>★ {r.score} • ₹{r.offeredMin}–₹{r.offeredMax}/kg • {r.offer} • {r.pickup}</small></div><button className="primary small" disabled={!r.acceptsMaterial} onClick={() => assignRecycler(r)}>{selectedRecycler===r.name ? (hindi ? "चयनित" : "Selected") : (hindi ? "चुनें" : "Select")} <ArrowRight size={14}/></button></div>)}</div><div className="info"><Truck size={22}/><div><b>{hindi ? "अगला कदम" : "Next step"}</b><p>{hindi ? "चुने हुए डिजिटल लॉट के लिए अधिकृत पार्टनर चुनें और हैंडओवर पर लाइसेंस जांचें।" : "Choose an authorized partner for your digital lot and verify the license at handover."}</p></div></div></section>;
+}
+
+function TokenModal({lot,hindi,onClose}) {
+  const spoken = hindi ? `लॉट ${lot.id} का ट्रेस करने योग्य टोकन ${lot.token} है।` : `The traceable token for lot ${lot.id} is ${lot.token}.`;
+  return <div className="token-overlay" role="presentation" onClick={onClose}><div className="panel token-modal" role="dialog" aria-modal="true" aria-labelledby="token-title" onClick={event => event.stopPropagation()}><button className="mobile-close token-close" onClick={onClose} aria-label={hindi ? "बंद करें" : "Close"}><X size={18}/></button><div className="token-icon"><QrCode size={46}/></div><span className="pill">{hindi ? "ट्रेस करने योग्य टोकन" : "TRACEABLE TOKEN"}</span><h2 id="token-title">{hindi ? "डिजिटल लॉट तैयार है" : "Digital lot is ready"}</h2><p>{hindi ? "इस QR/टोकन को अधिकृत रीसाइकलर हैंडओवर पर सत्यापित कर सकता है।" : "An authorized recycler can verify this QR/token at handover."}</p><div className="token-code"><strong>{lot.id}</strong><span>{lot.token}</span></div><div className="token-meta"><span>{lot.material} • {lot.weight} kg</span><span>₹{lot.value.toLocaleString("en-IN")}</span></div><div className="hero-actions"><button className="primary" onClick={() => speak(spoken, hindi ? "hi-IN" : "en-IN")}><span aria-hidden="true">🔊</span> {hindi ? "टोकन सुनें" : "Speak token"}</button><button className="outline" onClick={onClose}>{hindi ? "लॉट देखें" : "View lot"}</button></div></div></div>;
+}
+
+function Lots({lots,completeHandover,setActive,hindi}) {
+  const statusText = status => ({Completed: hindi ? "पूरा" : "Completed", "Recycler Selected": hindi ? "रीसाइकलर चुना गया" : "Recycler Selected", "Awaiting Recycler": hindi ? "रीसाइकलर की प्रतीक्षा" : "Awaiting Recycler"}[status] || status);
+  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">{hindi ? "ट्रेसबिलिटी" : "TRACEABILITY"}</span><h2>{hindi ? "डिजिटल लॉट इतिहास" : "Digital lot history"}</h2><p>{hindi ? "हर लॉट में संग्रह से भुगतान तक का रिकॉर्ड है।" : "Every lot keeps the collection-to-payment trail in one place."}</p></div><QrCode className="qr" size={27}/></div><div className="timeline">{lots.map(l => { const spoken = hindi ? `लॉट ${l.id}, ${l.material}, ${l.weight} किलो, मूल्य ${l.value} रुपये, स्थिति ${statusText(l.status)}।` : `Lot ${l.id}, ${l.material}, ${l.weight} kilograms, value ${l.value} rupees, status ${l.status}.`; return <div className="lot-card" key={l.id}><div className="lot-main"><div className="lot-icon"><Package size={20}/></div><div><b>{l.id}</b><span>{l.material} • {l.weight} kg • {l.timestamp ? new Date(l.timestamp).toLocaleString("en-IN") : l.date}</span><small><MapPin size={12}/> {l.recycler || (hindi ? "चयनित नहीं" : "Not assigned")}</small></div></div><div className="lot-actions"><strong>₹{l.value.toLocaleString("en-IN")}</strong><span className={l.status === "Completed" ? "status done" : "status"}>{statusText(l.status)}</span><SpokenButton text={spoken} hindi={hindi}/>{l.status === "Recycler Selected" && <button className="outline tiny" onClick={() => completeHandover(l.id)}><CheckCircle2 size={14}/> {hindi ? "हैंडओवर सत्यापित करें" : "Verify handover"}</button>}</div></div>; })}</div>{lots.some(l => l.status !== "Completed") && <div className="info"><ShieldCheck size={20}/><div><b>{hindi ? "ट्रेस करने योग्य हैंडओवर" : "Traceable handover"}</b><p>{hindi ? "सत्यापित हैंडओवर पर भुगतान रिकॉर्ड करने के लिए बटन दबाएं।" : "Verify the handover to record the recycler confirmation and payment."}</p></div></div>}<button className="primary" onClick={() => setActive("recyclers")}><Truck size={17}/> {hindi ? "रीसाइकलर खोजें" : "Find a recycler for a lot"}</button></div></section>;
+}
+
+function Earnings({total,lots,hindi}) {
+  const completed = lots.filter(l => l.status === "Completed");
+  const avg = completed.length ? Math.round(total / completed.length) : 0;
+  const soldWeight = completed.reduce((sum, lot) => sum + Number(lot.weight), 0);
+  const summaryText = hindi ? `कुल दर्ज कमाई ${total} रुपये है, ${completed.length} सत्यापित हैंडओवर से।` : `Total recorded earnings are ${total} rupees from ${completed.length} verified handovers.`;
+  return <section className="content"><div className="earn-card"><div><span>{hindi ? "कुल दर्ज कमाई" : "Total recorded earnings"}</span><strong>₹{total.toLocaleString("en-IN")}</strong><small>{completed.length} {hindi ? "पूरे हैंडओवर" : "completed handovers"} • {hindi ? "औसत" : "Avg."} ₹{avg.toLocaleString("en-IN")}</small></div><div className="earn-icon"><WalletCards size={35}/></div><SpokenButton text={summaryText} hindi={hindi}/></div><div className="earn-grid"><div className="panel mini-stat"><span>{hindi ? "पूरी बिक्री" : "Completed sales"}</span><strong>{completed.length}</strong><small>{hindi ? "सत्यापित हैंडओवर" : "Verified handovers"}</small></div><div className="panel mini-stat"><span>{hindi ? "बेचा गया वजन" : "Total sold weight"}</span><strong>{soldWeight.toFixed(1)} kg</strong><small>{hindi ? "पूरे लॉट में" : "Across completed lots"}</small></div><div className="panel mini-stat"><span>{hindi ? "औसत लॉट मूल्य" : "Average lot value"}</span><strong>₹{avg.toLocaleString("en-IN")}</strong><small>{hindi ? "लेजर का औसत" : "Ledger average"}</small></div></div><div className="panel"><div className="section-head"><div><h3>{hindi ? "लेन-देन लेजर" : "Transaction ledger"}</h3><p>{hindi ? "डिजिटल लॉट से जुड़े भुगतान रिकॉर्ड" : "Payment records linked to digital lots"}</p></div><Banknote size={21}/></div>{completed.length ? completed.map(l => <div className="ledger-row" key={l.id}><LotRow lot={l}/><div className="ledger-meta"><span>{hindi ? "लेन-देन" : "Transaction"}: {l.transactionId || "Pending ID"}</span><span>{hindi ? "भुगतान" : "Payment"}: {l.paymentMode || "UPI"}</span><span>{hindi ? "सत्यापन" : "Verified"}: {l.verifiedAt ? new Date(l.verifiedAt).toLocaleDateString("en-IN") : l.date}</span></div></div>) : <EmptyState text={hindi ? "अभी कोई पूरा हैंडओवर नहीं" : "No completed handovers yet"}/>}</div></section>;
+}
+
+function Stat({label,value,icon}) { return <div className="stat"><div className="stat-icon">{icon}</div><span>{label}</span><strong>{value}</strong></div>; }
+function Action({onClick,icon,title,text}) { return <button className="action" onClick={onClick}>{icon}<div><b>{title}</b><span>{text}</span></div><ChevronRight/></button>; }
+function Step({n,icon,title,text}) { return <div className="step"><div className="step-number">{n}</div><div className="step-icon">{icon}</div><b>{title}</b><span>{text}</span></div>; }
+function LotRow({lot}) { return <div className="lot-row"><div className="lot-icon"><Package size={18}/></div><div><b>{lot.id}</b><span>{lot.material} • {lot.weight} kg</span></div><div className="lot-right"><strong>₹{lot.value.toLocaleString("en-IN")}</strong><small className={lot.status === "Completed" ? "done-text" : "pending-text"}>{lot.status}</small></div></div>; }
+function EmptyState({text}) { return <div className="empty"><XCircle size={23}/><span>{text}</span></div>; }
