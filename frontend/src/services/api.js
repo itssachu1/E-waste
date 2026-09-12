@@ -114,4 +114,49 @@ export const recyclerService = {
     },
 };
 
+export const lotService = {
+    create: async (lot) => {
+        const response = await api.post('/lots', lot);
+        return response.data;
+    },
+    getAll: async (params = {}) => {
+        const response = await api.get('/lots', { params });
+        return response.data;
+    },
+    getById: async (id) => {
+        const response = await api.get(`/lots/${id}`);
+        return response.data;
+    },
+    updateStatus: async (id, status) => {
+        const response = await api.patch(`/lots/${id}/status`, { status });
+        return response.data;
+    },
+    assignRecycler: async (id, recyclerId) => {
+        const response = await api.patch(`/lots/${id}/recycler`, { recyclerId });
+        return response.data;
+    },
+};
+
+export const transactionService = {
+    create: async (transaction) => {
+        const response = await api.post('/transactions', transaction);
+        return response.data;
+    },
+    getAll: async (params = {}) => {
+        const response = await api.get('/transactions', { params });
+        return response.data;
+    },
+    updateStatus: async (id, paymentStatus) => {
+        const response = await api.patch(`/transactions/${id}/status`, { paymentStatus });
+        return response.data;
+    },
+};
+
+export const earningsService = {
+    get: async () => {
+        const response = await api.get('/earnings');
+        return response.data;
+    },
+};
+
 export default api;

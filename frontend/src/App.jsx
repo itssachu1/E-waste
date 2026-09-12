@@ -6,7 +6,7 @@ import {
   ChevronRight, Clock3, Truck, CircleAlert, ScanLine, Banknote,
   Languages, Menu, XCircle
 } from "lucide-react";
-import { materialService, priceService, recyclerService } from "./services/api";
+import { materialService, priceService, recyclerService, lotService, transactionService, earningsService } from "./services/api";
 import "./App.css";
 
 const MATERIAL_ICONS = {
@@ -25,15 +25,15 @@ function materialIcon(material) {
 
 const copy = {
   en: {
-    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", earnings: "Your earnings ledger" },
-    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "My Earnings"],
+    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", transactions: "Transaction history", earnings: "Your earnings ledger" },
+    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "Transactions", "My Earnings"],
     greeting: "Good afternoon, Sachin", dashboardTitle: "Turn e-waste materials into traceable value.",
     dashboardText: "Identify electronic devices, see a fair price, find an authorized recycler and keep a digital earnings record.",
     scan: "Scan e-waste", prices: "Check prices", viewAll: "View all", quickActions: "Quick actions", startWorkflow: "Start a collection workflow",
   },
   hi: {
-    pageTitles: { scan: "ई-वेस्ट सामग्री पहचानें", prices: "आज के उचित भाव", recyclers: "पास के अधिकृत रीसाइकलर", lots: "आपके डिजिटल सामग्री लॉट", earnings: "आपकी कमाई का रिकॉर्ड" },
-    nav: ["डैशबोर्ड", "ई-वेस्ट स्कैन", "आज के भाव", "रीसाइकलर खोजें", "मेरे लॉट", "मेरी कमाई"],
+    pageTitles: { scan: "ई-वेस्ट सामग्री पहचानें", prices: "आज के उचित भाव", recyclers: "पास के अधिकृत रीसाइकलर", lots: "आपके डिजिटल सामग्री लॉट", transactions: "लेन-देन इतिहास", earnings: "आपकी कमाई का रिकॉर्ड" },
+    nav: ["डैशबोर्ड", "ई-वेस्ट स्कैन", "आज के भाव", "रीसाइकलर खोजें", "मेरे लॉट", "लेन-देन", "मेरी कमाई"],
     greeting: "नमस्ते, सचिन", dashboardTitle: "ई-वेस्ट सामग्री को रिकॉर्ड योग्य मूल्य में बदलें।",
     dashboardText: "इलेक्ट्रॉनिक उपकरण पहचानें, उचित भाव देखें, अधिकृत रीसाइकलर खोजें और कमाई का डिजिटल रिकॉर्ड रखें।",
     scan: "ई-वेस्ट स्कैन करें", prices: "भाव देखें", viewAll: "सभी देखें", quickActions: "त्वरित कार्य", startWorkflow: "संग्रह प्रक्रिया शुरू करें",
@@ -73,20 +73,23 @@ function priceSummary(records) {
 
 export default function App() {
   const [active, setActive] = useState("home");
-  const [lots] = useState([]);
-  const [materials, setMaterials] = useState([]);
+  const [lots, setLots] = useState([]);
+  const [lotStatus, setLotStatus] = useState("loading");
+  const [transactions, setTransactions] = useState([]);
+  const [transactionStatus, setTransactionStatus] = useState("loading");
+  const [earnings, setEarnings] = useState(null);
+  const [earningsStatus, setEarningsStatus] = useState("loading");
   const [materialStatus, setMaterialStatus] = useState("loading");
   const [material, setMaterial] = useState("");
   const [priceRecords, setPriceRecords] = useState({});
   const [priceStatus, setPriceStatus] = useState("loading");
   const [recyclerMatches, setRecyclerMatches] = useState([]);
   const [recyclerStatus, setRecyclerStatus] = useState("loading");
-  const [weight, setWeight] = useState("1.5");
+  const [weight, setWeight] = useState("");
   const [photo, setPhoto] = useState(null);
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [hindi, setHindi] = useState(false);
-  const [tokenLot, setTokenLot] = useState(null);
   const fileRef = useRef();
   const language = hindi ? copy.hi : copy.en;
 
@@ -100,6 +103,22 @@ export default function App() {
         if (data?.length) setMaterial(data[0].commonName);
       })
       .catch(() => mounted && setMaterialStatus("error"));
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([transactionService.getAll(), earningsService.get()])
+      .then(([transactionData, earningsData]) => { if (mounted) { setTransactions(Array.isArray(transactionData) ? transactionData : []); setEarnings(earningsData); setTransactionStatus("ready"); setEarningsStatus("ready"); } })
+      .catch(() => { if (mounted) { setTransactionStatus("error"); setEarningsStatus("error"); } });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    lotService.getAll()
+      .then(data => mounted && (setLots(Array.isArray(data) ? data : []), setLotStatus("ready")))
+      .catch(() => mounted && setLotStatus("error"));
     return () => { mounted = false; };
   }, []);
 
@@ -132,8 +151,8 @@ export default function App() {
 
   const completed = lots.filter(l => l.status === "Completed");
   const pending = lots.filter(l => l.status !== "Completed");
-  const total = completed.reduce((s, l) => s + l.value, 0);
-  const totalWeight = lots.reduce((s, l) => s + Number(l.weight || 0), 0);
+  const total = Number(earnings?.total_earnings || 0);
+  const totalWeight = Number(earnings?.total_kg_collected || 0);
 
   const notify = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 4500); };
 
@@ -141,11 +160,29 @@ export default function App() {
     notify(hindi ? "AI पहचान अभी उपलब्ध नहीं है। कृपया सामग्री चुनें।" : "AI classification is unavailable. Please select the material.");
   };
 
-  const createLot = () => {
-    notify(hindi ? "लॉट बनाने की सुविधा अगले चरण में उपलब्ध होगी।" : "Lot creation will be connected to the backend in the next phase.");
+  const createLot = async () => {
+    const selectedMaterial = materials.find(item => item.commonName === material);
+    if (!selectedMaterial || !Number(weight) || Number(weight) <= 0) return notify(hindi ? "सामग्री और सही वजन भरें।" : "Select a material and enter a valid weight.");
+    const selectedPrice = priceRecords[selectedMaterial.id]?.find(record => record.verification_status !== "EXPIRED");
+    try {
+      const lot = await lotService.create({ materialId: selectedMaterial.id, approximateWeight: Number(weight), photoUrl: null, selectedPriceRecordId: selectedPrice?.id || null });
+      setLots(current => [lot, ...current]);
+      setLotStatus("ready");
+      setActive("lots");
+      notify(`${hindi ? "डिजिटल लॉट तैयार" : "Digital lot created"}: ${lot.lot_reference}`);
+    } catch (error) {
+      notify(error.response?.data?.detail || (hindi ? "लॉट नहीं बन सका। कृपया फिर कोशिश करें।" : "Unable to create lot. Please try again."));
+    }
   };
 
   const navigate = (id) => { setActive(id); setMobileMenu(false); };
+  const refreshLedger = async () => {
+    const [transactionData, earningsData] = await Promise.all([transactionService.getAll(), earningsService.get()]);
+    setTransactions(Array.isArray(transactionData) ? transactionData : []);
+    setEarnings(earningsData);
+    setTransactionStatus("ready");
+    setEarningsStatus("ready");
+  };
 
   return (
     <div className="app">
@@ -157,7 +194,7 @@ export default function App() {
             <button className="mobile-close" onClick={() => setMobileMenu(false)}><X size={18}/></button>
           </div>
           <nav>
-            {[["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["earnings", WalletCards]].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
+            {[ ["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards] ].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
           </nav>
         </div>
         <div className="trust-card">
@@ -182,16 +219,16 @@ export default function App() {
 
         {notice && <div className="notice"><CheckCircle2 size={18}/><span>{notice}</span><button onClick={() => setNotice("")}><X size={16}/></button></div>}
 
-        {active === "home" && <Dashboard total={total} weight={totalWeight} lots={lots} pending={pending} setActive={navigate} hindi={hindi} language={language}/>} 
-        {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} setPhoto={setPhoto} fileRef={fileRef} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus}/>} 
-        {active === "prices" && <Prices hindi={hindi} materials={materials} priceRecords={priceRecords} priceStatus={priceStatus}/>} 
-        {active === "recyclers" && <Recyclers material={material} matches={recyclerMatches} status={recyclerStatus} hindi={hindi}/>} 
-        {active === "lots" && <Lots lots={lots} setActive={navigate} hindi={hindi}/>} 
-        {active === "earnings" && <Earnings total={total} lots={lots} hindi={hindi}/>} 
+        {active === "home" && <Dashboard total={total} weight={totalWeight} lots={lots} pending={pending} setActive={navigate} hindi={hindi} language={language} earningsStatus={earningsStatus}/>}
+        {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} setPhoto={setPhoto} fileRef={fileRef} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus}/>}
+        {active === "prices" && <Prices hindi={hindi} materials={materials} priceRecords={priceRecords} priceStatus={priceStatus}/>}
+        {active === "recyclers" && <Recyclers material={material} matches={recyclerMatches} status={recyclerStatus} hindi={hindi}/>}
+        {active === "lots" && <Lots lots={lots} status={lotStatus} setActive={navigate} hindi={hindi}/>}
+        {active === "transactions" && <Transactions lots={lots} transactions={transactions} status={transactionStatus} refreshLedger={refreshLedger} hindi={hindi}/>}
+        {active === "earnings" && <Earnings earnings={earnings} status={earningsStatus} transactions={transactions} hindi={hindi}/>}
       </main>
 
       <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19}/> {hindi ? "स्कैन" : "Scan"}</button>
-      {tokenLot && <TokenModal lot={tokenLot} hindi={hindi} onClose={() => setTokenLot(null)} />}
     </div>
   );
 }
@@ -200,7 +237,7 @@ function Nav({active,id,label,icon,setActive}) {
   return <button className={active===id ? "nav active" : "nav"} onClick={() => setActive(id)}>{icon}<span>{label}</span>{active===id && <ChevronRight size={15}/>}</button>;
 }
 
-function Dashboard({total, weight, lots, pending, setActive, hindi, language}) {
+function Dashboard({total, weight, lots, pending, setActive, hindi, language, earningsStatus}) {
   return <section className="content">
     <div className="hero-card dashboard-hero">
       <div className="hero-copy"><span className="pill">VERNACULAR • OFFLINE-FRIENDLY</span><h2>{language.dashboardTitle}</h2><p>{language.dashboardText}</p><div className="hero-actions"><button className="primary" onClick={() => setActive("scan")}><Camera size={18}/> {language.scan}</button><button className="hero-secondary" onClick={() => setActive("prices")}><IndianRupee size={17}/> {language.prices}</button></div></div>
@@ -208,8 +245,8 @@ function Dashboard({total, weight, lots, pending, setActive, hindi, language}) {
     </div>
 
     <div className="stats">
-      <Stat label="Total earnings" value={`₹${total.toLocaleString("en-IN")}`} icon={<IndianRupee/>} />
-      <Stat label="E-waste collected" value={`${weight.toFixed(1)} kg`} icon={<Recycle/>} />
+      <Stat label="Total earnings" value={earningsStatus === "error" ? (hindi ? "उपलब्ध नहीं" : "Unavailable") : `₹${total.toLocaleString("en-IN")}`} icon={<IndianRupee/>} />
+      <Stat label="E-waste collected" value={earningsStatus === "error" ? (hindi ? "उपलब्ध नहीं" : "Unavailable") : `${weight.toFixed(1)} kg`} icon={<Recycle/>} />
       <Stat label="Digital lots" value={lots.length} icon={<Package/>} />
       <Stat label="Pending handovers" value={pending.length} icon={<Clock3/>} />
     </div>
@@ -317,15 +354,48 @@ function TokenModal({lot,hindi,onClose}) {
   return <div className="token-overlay" role="presentation" onClick={onClose}><div className="panel token-modal" role="dialog" aria-modal="true" aria-labelledby="token-title" onClick={event => event.stopPropagation()}><button className="mobile-close token-close" onClick={onClose} aria-label={hindi ? "बंद करें" : "Close"}><X size={18}/></button><div className="token-icon"><QrCode size={46}/></div><span className="pill">{hindi ? "ट्रेस करने योग्य टोकन" : "TRACEABLE TOKEN"}</span><h2 id="token-title">{hindi ? "डिजिटल लॉट तैयार है" : "Digital lot is ready"}</h2><p>{hindi ? "इस QR/टोकन को अधिकृत रीसाइकलर हैंडओवर पर सत्यापित कर सकता है।" : "An authorized recycler can verify this QR/token at handover."}</p><div className="token-code"><strong>{lot.id}</strong><span>{lot.token}</span></div><div className="token-meta"><span>{lot.material} • {lot.weight} kg</span><span>₹{lot.value.toLocaleString("en-IN")}</span></div><div className="hero-actions"><button className="primary" onClick={() => speak(spoken, hindi ? "hi-IN" : "en-IN")}><span aria-hidden="true">🔊</span> {hindi ? "टोकन सुनें" : "Speak token"}</button><button className="outline" onClick={onClose}>{hindi ? "लॉट देखें" : "View lot"}</button></div></div></div>;
 }
 
-function Lots({lots,completeHandover,setActive,hindi}) {
+function Lots({lots,status,setActive,hindi}) {
   const statusText = status => ({Completed: hindi ? "पूरा" : "Completed", "Recycler Selected": hindi ? "रीसाइकलर चुना गया" : "Recycler Selected", "Awaiting Recycler": hindi ? "रीसाइकलर की प्रतीक्षा" : "Awaiting Recycler"}[status] || status);
-  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">{hindi ? "ट्रेसबिलिटी" : "TRACEABILITY"}</span><h2>{hindi ? "डिजिटल लॉट इतिहास" : "Digital lot history"}</h2><p>{hindi ? "हर लॉट में संग्रह से भुगतान तक का रिकॉर्ड है।" : "Every lot keeps the collection-to-payment trail in one place."}</p></div><QrCode className="qr" size={27}/></div><div className="timeline">{lots.map(l => { const spoken = hindi ? `लॉट ${l.id}, ${l.material}, ${l.weight} किलो, मूल्य ${l.value} रुपये, स्थिति ${statusText(l.status)}।` : `Lot ${l.id}, ${l.material}, ${l.weight} kilograms, value ${l.value} rupees, status ${l.status}.`; return <div className="lot-card" key={l.id}><div className="lot-main"><div className="lot-icon"><Package size={20}/></div><div><b>{l.id}</b><span>{l.material} • {l.weight} kg • {l.timestamp ? new Date(l.timestamp).toLocaleString("en-IN") : l.date}</span><small><MapPin size={12}/> {l.recycler || (hindi ? "चयनित नहीं" : "Not assigned")}</small></div></div><div className="lot-actions"><strong>₹{l.value.toLocaleString("en-IN")}</strong><span className={l.status === "Completed" ? "status done" : "status"}>{statusText(l.status)}</span><SpokenButton text={spoken} hindi={hindi}/>{l.status === "Recycler Selected" && <button className="outline tiny" onClick={() => completeHandover(l.id)}><CheckCircle2 size={14}/> {hindi ? "हैंडओवर सत्यापित करें" : "Verify handover"}</button>}</div></div>; })}</div>{lots.some(l => l.status !== "Completed") && <div className="info"><ShieldCheck size={20}/><div><b>{hindi ? "ट्रेस करने योग्य हैंडओवर" : "Traceable handover"}</b><p>{hindi ? "सत्यापित हैंडओवर पर भुगतान रिकॉर्ड करने के लिए बटन दबाएं।" : "Verify the handover to record the recycler confirmation and payment."}</p></div></div>}<button className="primary" onClick={() => setActive("recyclers")}><Truck size={17}/> {hindi ? "रीसाइकलर खोजें" : "Find a recycler for a lot"}</button></div></section>;
+  const lotValue = lot => lot.estimated_value == null ? (hindi ? "उपलब्ध नहीं" : "Not available") : `₹${Number(lot.estimated_value).toLocaleString("en-IN")}`;
+  if (status === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "आपके लॉट लोड हो रहे हैं..." : "Loading your lots..."}</span></div></section>;
+  if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "लॉट लोड नहीं हो सके। कृपया फिर कोशिश करें।" : "Unable to load lots. Please try again."}</span></div></section>;
+  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">{hindi ? "ट्रेसबिलिटी" : "TRACEABILITY"}</span><h2>{hindi ? "डिजिटल लॉट इतिहास" : "Digital lot history"}</h2><p>{hindi ? "हर लॉट का वास्तविक रिकॉर्ड यहां दिखता है।" : "Your server-backed digital lot records appear here."}</p></div><QrCode className="qr" size={27}/></div>{lots.length === 0 ? <div className="empty"><Package size={23}/><span>{hindi ? "अभी कोई लॉट नहीं बना। अपना पहला डिजिटल लॉट बनाएं।" : "No lots created yet. Create your first digital lot."}</span></div> : <div className="timeline">{lots.map(l => { const spoken = `Lot ${l.lot_reference}, ${l.material_name}, ${l.approximate_weight} kilograms, ${l.status}.`; return <div className="lot-card" key={l.id}><div className="lot-main"><div className="lot-icon"><Package size={20}/></div><div><b>{l.lot_reference}</b><span>{l.material_name} • {l.approximate_weight} kg • {new Date(l.created_at).toLocaleString("en-IN")}</span><small><MapPin size={12}/> {l.recycler_id ? `Recycler #${l.recycler_id}` : (hindi ? "रीसाइकलर चयनित नहीं" : "Recycler not selected")}</small></div></div><div className="lot-actions"><strong>{lotValue(l)}</strong><span className="status">{l.status}</span><SpokenButton text={spoken} hindi={hindi}/></div></div>; })}</div>}<button className="primary" onClick={() => setActive("scan")}><Package size={17}/> {hindi ? "नया लॉट बनाएं" : "Create a new lot"}</button></div></section>;
 }
 
-function Earnings({total,lots,hindi}) {
+function Transactions({lots,transactions,status,refreshLedger,hindi}) {
+  const [amount, setAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("CASH");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [busy, setBusy] = useState(false);
+  const eligibleLot = lots.find(lot => lot.status === "READY_FOR_HANDOVER" || lot.status === "HANDED_OVER");
+  const role = (() => { try { return JSON.parse(localStorage.getItem("janvoice_user") || "null")?.role || ""; } catch { return ""; } })();
+  const createTransaction = async event => {
+    event.preventDefault();
+    if (!eligibleLot || !Number(amount) || Number(amount) <= 0) return;
+    setBusy(true);
+    try { await transactionService.create({ lotId: eligibleLot.id, amount: Number(amount), paymentMode, paymentReference: paymentReference || null }); await refreshLedger(); setAmount(""); setPaymentReference(""); } catch { /* Error is represented by the unchanged ledger state. */ } finally { setBusy(false); }
+  };
+  const markPaid = async transaction => { setBusy(true); try { await transactionService.updateStatus(transaction.id, "PAID"); await refreshLedger(); } finally { setBusy(false); } };
+  if (status === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "लेन-देन लोड हो रहे हैं..." : "Loading transactions..."}</span></div></section>;
+  if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "लेन-देन लोड नहीं हो सके। कृपया फिर कोशिश करें।" : "Unable to load transactions. Please try again."}</span></div></section>;
+  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">PAYMENT LEDGER</span><h2>{hindi ? "लेन-देन रिकॉर्ड करें" : "Record a transaction"}</h2><p>{hindi ? "केवल हैंडओवर के लिए तैयार लॉट पर भुगतान रिकॉर्ड करें।" : "Record payment only for a lot ready for handover."}</p></div><Banknote size={21}/></div>{eligibleLot ? <form className="form-row" onSubmit={createTransaction}><label>Lot<input value={eligibleLot.lot_reference} readOnly /></label><label>{hindi ? "राशि" : "Amount"}<input type="number" min="0.01" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} required /></label><label>{hindi ? "भुगतान माध्यम" : "Payment mode"}<select value={paymentMode} onChange={event => setPaymentMode(event.target.value)}><option>CASH</option><option>UPI</option><option>BANK_TRANSFER</option><option>OTHER</option></select></label>{paymentMode !== "CASH" && <label>{hindi ? "भुगतान संदर्भ" : "Payment reference"}<input value={paymentReference} onChange={event => setPaymentReference(event.target.value)} /></label>}<button className="primary" disabled={busy}>{hindi ? "लंबित भुगतान रिकॉर्ड करें" : "Record pending payment"}</button></form> : <div className="empty"><span>{hindi ? "कोई लॉट हैंडओवर के लिए तैयार नहीं है।" : "No lot is ready for handover."}</span></div>}</div><div className="panel"><div className="section-head"><div><h3>{hindi ? "लेन-देन इतिहास" : "Transaction history"}</h3><p>{hindi ? "सत्यापन तक भुगतान लंबित रहता है।" : "Payments remain pending until explicitly confirmed."}</p></div></div>{transactions.length === 0 ? <div className="empty"><span>{hindi ? "अभी कोई लेन-देन नहीं।" : "No transactions yet."}</span></div> : transactions.map(transaction => <div className="lot-row" key={transaction.id}><div className="lot-icon"><Banknote size={18}/></div><div><b>{transaction.lot_reference}</b><span>{transaction.payment_mode} • {transaction.payment_reference || (hindi ? "संदर्भ उपलब्ध नहीं" : "No reference")}</span></div><div className="lot-right"><strong>₹{Number(transaction.amount).toLocaleString("en-IN")}</strong><small className={transaction.payment_status === "PAID" ? "done-text" : "pending-text"}>{transaction.payment_status}</small>{transaction.payment_status === "PENDING" && (role === "RECYCLER" || role === "VERIFIED_RECYCLER" || role === "ADMIN") && <button className="outline tiny" disabled={busy} onClick={() => markPaid(transaction)}>{transaction.payment_mode === "CASH" ? (hindi ? "नकद प्राप्ति की पुष्टि" : "Confirm cash received") : (hindi ? "भुगतान पुष्टि" : "Confirm payment")}</button>}</div></div>)}</div></section>;
+}
+
+function Earnings({earnings,status,transactions,hindi}) {
+  if (status === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "कमाई लोड हो रही है..." : "Loading earnings..."}</span></div></section>;
+  if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23}/><span>{hindi ? "कमाई लोड नहीं हो सकी। कृपया फिर कोशिश करें।" : "Unable to load earnings. Please try again."}</span></div></section>;
+  const total = Number(earnings?.total_earnings || 0);
+  const pending = Number(earnings?.pending_amount || 0);
+  const kg = Number(earnings?.total_kg_collected || 0);
+  const paid = Number(earnings?.completed_handovers_count || 0);
+  const summaryText = hindi ? `कुल कमाई ${total} रुपये और ${kg} किलो है।` : `Total earnings are ${total} rupees and ${kg} kilograms.`;
+  return <section className="content"><div className="earn-card"><div><span>{hindi ? "कुल दर्ज कमाई" : "Total recorded earnings"}</span><strong>₹{total.toLocaleString("en-IN")}</strong><small>{paid} {hindi ? "भुगतान किए गए हैंडओवर" : "paid handovers"} • {hindi ? "लंबित" : "Pending"} ₹{pending.toLocaleString("en-IN")}</small></div><div className="earn-icon"><WalletCards size={35}/></div><SpokenButton text={summaryText} hindi={hindi}/></div><div className="earn-grid"><div className="panel mini-stat"><span>{hindi ? "भुगतान किए गए हैंडओवर" : "Paid handovers"}</span><strong>{paid}</strong></div><div className="panel mini-stat"><span>{hindi ? "भुगतान किया गया वजन" : "Paid weight"}</span><strong>{kg.toFixed(1)} kg</strong></div><div className="panel mini-stat"><span>{hindi ? "लंबित राशि" : "Pending amount"}</span><strong>₹{pending.toLocaleString("en-IN")}</strong></div></div>{transactions.length === 0 ? <div className="empty panel"><span>{hindi ? "अभी कमाई नहीं है। पूरे भुगतान किए गए हैंडओवर यहां दिखेंगे।" : "No earnings yet. Completed paid handovers will appear here."}</span></div> : <div className="panel"><div className="section-head"><h3>{hindi ? "भुगतान रिकॉर्ड" : "Payment records"}</h3></div>{transactions.filter(transaction => transaction.payment_status === "PAID").map(transaction => <LotRow key={transaction.id} lot={{lot_reference: transaction.lot_reference, material_name: "", approximate_weight: "", estimated_value: transaction.amount, status: "PAID"}} />)}</div>}</section>;
+}
+
+function LegacyEarnings({total,lots,hindi}) {
   const completed = lots.filter(l => l.status === "Completed");
   const avg = completed.length ? Math.round(total / completed.length) : 0;
-  const soldWeight = completed.reduce((sum, lot) => sum + Number(lot.weight), 0);
+  const soldWeight = completed.reduce((sum, lot) => sum + Number(lot.approximate_weight || 0), 0);
   const summaryText = hindi ? `कुल दर्ज कमाई ${total} रुपये है, ${completed.length} सत्यापित हैंडओवर से।` : `Total recorded earnings are ${total} rupees from ${completed.length} verified handovers.`;
   return <section className="content"><div className="earn-card"><div><span>{hindi ? "कुल दर्ज कमाई" : "Total recorded earnings"}</span><strong>₹{total.toLocaleString("en-IN")}</strong><small>{completed.length} {hindi ? "पूरे हैंडओवर" : "completed handovers"} • {hindi ? "औसत" : "Avg."} ₹{avg.toLocaleString("en-IN")}</small></div><div className="earn-icon"><WalletCards size={35}/></div><SpokenButton text={summaryText} hindi={hindi}/></div><div className="earn-grid"><div className="panel mini-stat"><span>{hindi ? "पूरी बिक्री" : "Completed sales"}</span><strong>{completed.length}</strong><small>{hindi ? "सत्यापित हैंडओवर" : "Verified handovers"}</small></div><div className="panel mini-stat"><span>{hindi ? "बेचा गया वजन" : "Total sold weight"}</span><strong>{soldWeight.toFixed(1)} kg</strong><small>{hindi ? "पूरे लॉट में" : "Across completed lots"}</small></div><div className="panel mini-stat"><span>{hindi ? "औसत लॉट मूल्य" : "Average lot value"}</span><strong>₹{avg.toLocaleString("en-IN")}</strong><small>{hindi ? "लेजर का औसत" : "Ledger average"}</small></div></div><div className="panel"><div className="section-head"><div><h3>{hindi ? "लेन-देन लेजर" : "Transaction ledger"}</h3><p>{hindi ? "डिजिटल लॉट से जुड़े भुगतान रिकॉर्ड" : "Payment records linked to digital lots"}</p></div><Banknote size={21}/></div>{completed.length ? completed.map(l => <div className="ledger-row" key={l.id}><LotRow lot={l}/><div className="ledger-meta"><span>{hindi ? "लेन-देन" : "Transaction"}: {l.transactionId || "Pending ID"}</span><span>{hindi ? "भुगतान" : "Payment"}: {l.paymentMode || "UPI"}</span><span>{hindi ? "सत्यापन" : "Verified"}: {l.verifiedAt ? new Date(l.verifiedAt).toLocaleDateString("en-IN") : l.date}</span></div></div>) : <EmptyState text={hindi ? "अभी कोई पूरा हैंडओवर नहीं" : "No completed handovers yet"}/>}</div></section>;
 }
@@ -333,5 +403,5 @@ function Earnings({total,lots,hindi}) {
 function Stat({label,value,icon}) { return <div className="stat"><div className="stat-icon">{icon}</div><span>{label}</span><strong>{value}</strong></div>; }
 function Action({onClick,icon,title,text}) { return <button className="action" onClick={onClick}>{icon}<div><b>{title}</b><span>{text}</span></div><ChevronRight/></button>; }
 function Step({n,icon,title,text}) { return <div className="step"><div className="step-number">{n}</div><div className="step-icon">{icon}</div><b>{title}</b><span>{text}</span></div>; }
-function LotRow({lot}) { return <div className="lot-row"><div className="lot-icon"><Package size={18}/></div><div><b>{lot.id}</b><span>{lot.material} • {lot.weight} kg</span></div><div className="lot-right"><strong>₹{lot.value.toLocaleString("en-IN")}</strong><small className={lot.status === "Completed" ? "done-text" : "pending-text"}>{lot.status}</small></div></div>; }
+function LotRow({lot}) { return <div className="lot-row"><div className="lot-icon"><Package size={18}/></div><div><b>{lot.lot_reference || lot.id}</b><span>{lot.material_name || lot.material} • {lot.approximate_weight || lot.weight} kg</span></div><div className="lot-right"><strong>{lot.estimated_value == null ? "Not available" : `₹${Number(lot.estimated_value).toLocaleString("en-IN")}`}</strong><small className={lot.status === "PAID" ? "done-text" : "pending-text"}>{lot.status}</small></div></div>; }
 function EmptyState({text}) { return <div className="empty"><XCircle size={23}/><span>{text}</span></div>; }
