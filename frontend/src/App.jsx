@@ -80,6 +80,7 @@ export default function App() {
   const [earnings, setEarnings] = useState(null);
   const [earningsStatus, setEarningsStatus] = useState("loading");
   const [materialStatus, setMaterialStatus] = useState("loading");
+  const [materials, setMaterials] = useState([]);
   const [material, setMaterial] = useState("");
   const [priceRecords, setPriceRecords] = useState({});
   const [priceStatus, setPriceStatus] = useState("loading");
@@ -287,7 +288,7 @@ function ScanPage({materials,materialStatus,material,setMaterial,weight,setWeigh
       ? <div className="empty"><span>Unable to load materials. Please try again.</span></div>
       : materials.length === 0
         ? <div className="empty"><span>No materials available.</span></div>
-        : <div className="material-list">{materials.map(item => { const Icon = materialIcon(item); return <button className={material === item.commonName ? "material selected" : "material"} key={item.id} onClick={() => setMaterial(item.commonName)}><span className="material-icon"><Icon size={18}/></span><span>{item.commonName}</span>{material === item.commonName && <CheckCircle2 size={16}/>} </button>; })}</div>;
+        : <div className="material-list">{materials.map(item => { const Icon = materialIcon(item); return <button className={material === item.commonName ? "material selected" : "material"} key={item.id} onClick={() => setMaterial(item.commonName)}><span className="material-icon"><Icon size={18}/></span><span>{item.commonName}</span>{material === item.commonName && <CheckCircle2 size={16}/>} curl -i http://localhost:8080/api/materials</button>; })}</div>;
   return <section className="content">
     <div className="hero-card compact-hero"><div><span className="pill">MATERIAL MASTER</span><h2>{hindi ? "ई-वेस्ट सामग्री चुनें" : "Select your e-waste material"}</h2><p>{hindi ? "फोटो लें, सामग्री की पुष्टि करें और वजन भरें।" : "Capture a photo, confirm the material from the database, and enter weight."}</p></div><div className="hero-symbol"><Camera size={40}/></div></div>
     <div className="scan-grid">
