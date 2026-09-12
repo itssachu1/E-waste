@@ -1,0 +1,6 @@
+# Build output
+backend/target/
+frontend/dist/
+
+# Packaged archives
+*.zip

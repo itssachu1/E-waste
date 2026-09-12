@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.janvoice.ai.controller.PriceRecordControllerTest
--------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.583 s -- in com.janvoice.ai.controller.PriceRecordControllerTest
