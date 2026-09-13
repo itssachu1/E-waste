@@ -1,7 +1,6 @@
 package com.janvoice.ai.service;
 
 import com.janvoice.ai.dto.PriceRecordRequest;
-import com.janvoice.ai.entity.PriceRecord;
 import com.janvoice.ai.entity.User;
 import java.util.List;
 import java.util.Map;

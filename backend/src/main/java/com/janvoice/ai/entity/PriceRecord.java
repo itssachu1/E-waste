@@ -1,6 +1,8 @@
 package com.janvoice.ai.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -22,7 +24,9 @@ public class PriceRecord {
     @Column(nullable = false, length = 160)
     private String location;
 
-    @Enumerated(EnumType.STRING) @Column(name = "buyer_type", nullable = false, length = 40)
+    // Stored as VARCHAR by the Flyway schema (V1); force the JDBC type so
+    // Hibernate's MySQL dialect does not expect a native ENUM column.
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "buyer_type", nullable = false, length = 40)
     private BuyerType buyerType;
 
     @Column(name = "buyer_id")
@@ -31,16 +35,16 @@ public class PriceRecord {
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal rate;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30)
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30)
     private MaterialUnit unit;
 
     @Column(length = 80) private String grade;
     @Column(name = "condition_description", length = 300) private String condition;
-    @Enumerated(EnumType.STRING) @Column(name = "source_type", nullable = false, length = 40) private SourceType sourceType;
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "source_type", nullable = false, length = 40) private SourceType sourceType;
     @Column(name = "source_reference", length = 500) private String sourceReference;
     @Column(name = "quoted_at", nullable = false) private LocalDateTime quotedAt;
     @Column(name = "valid_until") private LocalDateTime validUntil;
-    @Enumerated(EnumType.STRING) @Column(name = "verification_status", nullable = false, length = 20) private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "verification_status", nullable = false, length = 20) private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
     @Column(name = "created_by") private Long createdBy;
     @Column(name = "verified_by") private Long verifiedBy;
     @Column(name = "verified_at") private LocalDateTime verifiedAt;

@@ -24,6 +24,8 @@ class LotControllerTest {
     @Autowired private MaterialMasterRepository materials;
     @Autowired private PriceRecordRepository prices;
     @Autowired private LotRepository lots;
+    @Autowired private TransactionRepository transactions;
+    @Autowired private RecyclerRepository recyclers;
     @Autowired private SessionTokenService tokens;
     private MaterialMaster material;
     private String collectorToken;
@@ -31,7 +33,10 @@ class LotControllerTest {
 
     @BeforeEach
     void setUp() {
-        lots.deleteAll(); prices.deleteAll(); users.deleteAll();
+        // FK-safe deletion order: transactions reference lots, lots reference
+        // price records/recyclers/users, price records reference recyclers/users,
+        // recyclers reference users (created_by).
+        transactions.deleteAll(); lots.deleteAll(); prices.deleteAll(); recyclers.deleteAll(); users.deleteAll();
         User collector = users.save(new User(null, "lot-collector", "test", "CITIZEN", "Indore"));
         User other = users.save(new User(null, "other-collector", "test", "CITIZEN", "Indore"));
         collectorToken = tokens.issue(collector); otherToken = tokens.issue(other);

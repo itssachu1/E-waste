@@ -33,42 +33,6 @@ export const authService = {
     },
 };
 
-export const complaintService = {
-    // Post a new citizen complaint
-    submit: async (originalText, wardArea, citizenId) => {
-        const response = await api.post('/complaints', { originalText, wardArea, citizenId });
-        return response.data;
-    },
-    // Get all active master complaints in area
-    getByWard: async (wardArea) => {
-        const response = await api.get(`/complaints?wardArea=${encodeURIComponent(wardArea)}`);
-        return response.data;
-    },
-    // Search complaints by text matching
-    search: async (wardArea, query) => {
-        const response = await api.get(`/complaints/search?wardArea=${encodeURIComponent(wardArea)}&query=${encodeURIComponent(query)}`);
-        return response.data;
-    },
-    // Cast upvote
-    upvote: async (complaintId, userId) => {
-        const response = await api.post(`/complaints/${complaintId}/upvote?userId=${userId}`);
-        return response.data;
-    },
-};
-
-export const mpService = {
-    // Fetch dashboard stats (counters, category maps, dynamic AI briefings)
-    getStats: async (wardArea) => {
-        const response = await api.get(`/mp/dashboard/stats?wardArea=${encodeURIComponent(wardArea)}`);
-        return response.data;
-    },
-    // Update complaint status (PENDING -> IN_PROGRESS -> RESOLVED)
-    updateStatus: async (complaintId, status) => {
-        const response = await api.put(`/mp/complaints/${complaintId}/status?status=${status}`);
-        return response.data;
-    },
-};
-
 export const materialService = {
     getAll: async (params = {}) => {
         const response = await api.get('/materials', { params });

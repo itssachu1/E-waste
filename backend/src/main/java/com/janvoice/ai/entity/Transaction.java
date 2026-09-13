@@ -1,6 +1,8 @@
 package com.janvoice.ai.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -18,9 +20,11 @@ public class Transaction {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "collector_id", nullable = false) private User collector;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "recycler_id") private Recycler recycler;
     @Column(nullable = false, precision = 14, scale = 2) private BigDecimal amount;
-    @Enumerated(EnumType.STRING) @Column(name = "payment_mode", nullable = false, length = 30) private PaymentMode paymentMode;
+    // Stored as VARCHAR by the Flyway schema (V1); force the JDBC type so
+    // Hibernate's MySQL dialect does not expect a native ENUM column.
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "payment_mode", nullable = false, length = 30) private PaymentMode paymentMode;
     @Column(name = "payment_reference", length = 160) private String paymentReference;
-    @Enumerated(EnumType.STRING) @Column(name = "payment_status", nullable = false, length = 30) private PaymentStatus paymentStatus;
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "payment_status", nullable = false, length = 30) private PaymentStatus paymentStatus;
     @Column(length = 1000) private String notes;
     @Column(name = "transaction_time") private LocalDateTime transactionTime;
     @Column(name = "created_by") private Long createdBy;

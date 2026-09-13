@@ -1,6 +1,8 @@
 package com.janvoice.ai.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -44,6 +46,9 @@ public class MaterialMaster {
     private String recoverableMaterials;
 
     @NotNull
+    // Stored as VARCHAR by the Flyway schema (V1); force the JDBC type so
+    // Hibernate's MySQL dialect does not expect a native ENUM column.
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Enumerated(EnumType.STRING)
     @Column(name = "typical_unit", nullable = false, length = 20)
     private MaterialUnit typicalUnit;

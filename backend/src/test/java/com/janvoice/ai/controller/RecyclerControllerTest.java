@@ -1,11 +1,13 @@
 package com.janvoice.ai.controller;
 
-import com.janvoice.ai.dto.RecyclerRequest;
 import com.janvoice.ai.entity.MaterialMaster;
 import com.janvoice.ai.entity.Recycler;
 import com.janvoice.ai.entity.User;
+import com.janvoice.ai.repository.LotRepository;
 import com.janvoice.ai.repository.MaterialMasterRepository;
+import com.janvoice.ai.repository.PriceRecordRepository;
 import com.janvoice.ai.repository.RecyclerRepository;
+import com.janvoice.ai.repository.TransactionRepository;
 import com.janvoice.ai.repository.UserRepository;
 import com.janvoice.ai.service.SessionTokenService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,9 @@ class RecyclerControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private RecyclerRepository recyclerRepository;
     @Autowired private MaterialMasterRepository materialRepository;
+    @Autowired private PriceRecordRepository priceRepository;
+    @Autowired private LotRepository lotRepository;
+    @Autowired private TransactionRepository transactionRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private SessionTokenService tokens;
     private MaterialMaster first;
@@ -41,6 +46,11 @@ class RecyclerControllerTest {
 
     @BeforeEach
     void setUp() {
+        // FK-safe deletion order: transactions reference lots, lots reference
+        // price records/recyclers/users, price records reference recyclers/users.
+        transactionRepository.deleteAll();
+        lotRepository.deleteAll();
+        priceRepository.deleteAll();
         recyclerRepository.deleteAll();
         userRepository.deleteAll();
         User admin = userRepository.save(new User(null, "recycler-admin", "test", "ADMIN", "Indore"));

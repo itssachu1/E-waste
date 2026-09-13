@@ -1,6 +1,6 @@
 -- Phase 5: normalized recycler master. No recycler records are seeded.
-ALTER TABLE recyclers ADD COLUMN IF NOT EXISTS created_by BIGINT;
-ALTER TABLE recyclers ADD COLUMN IF NOT EXISTS verified_by BIGINT;
+ALTER TABLE recyclers ADD COLUMN created_by BIGINT;
+ALTER TABLE recyclers ADD COLUMN verified_by BIGINT;
 
 CREATE TABLE IF NOT EXISTS recycler_accepted_materials (
     recycler_id BIGINT NOT NULL,
@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS recycler_accepted_materials (
 ALTER TABLE recyclers ADD CONSTRAINT fk_recycler_created_by FOREIGN KEY (created_by) REFERENCES users(id);
 ALTER TABLE recyclers ADD CONSTRAINT fk_recycler_verified_by FOREIGN KEY (verified_by) REFERENCES users(id);
 
-CREATE INDEX IF NOT EXISTS idx_recyclers_city ON recyclers(city);
-CREATE INDEX IF NOT EXISTS idx_recyclers_authorization_status ON recyclers(authorization_status);
-CREATE INDEX IF NOT EXISTS idx_recyclers_active ON recyclers(active);
-CREATE INDEX IF NOT EXISTS idx_recycler_accepted_materials_material ON recycler_accepted_materials(material_id);
+CREATE INDEX idx_recyclers_city ON recyclers(city);
+CREATE INDEX idx_recyclers_authorization_status ON recyclers(authorization_status);
+CREATE INDEX idx_recyclers_active ON recyclers(active);
+CREATE INDEX idx_recycler_accepted_materials_material ON recycler_accepted_materials(material_id);
 
 -- The previous column was never populated by production migrations. Accepted materials are now relational.
-ALTER TABLE recyclers DROP COLUMN IF EXISTS accepted_materials;
+ALTER TABLE recyclers DROP COLUMN accepted_materials;

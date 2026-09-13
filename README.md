@@ -80,13 +80,23 @@ CREATE DATABASE janvoice_ai;
 Configure your credentials in `backend/src/main/resources/application.properties` (defaults are set for username: `root`, password: `root` on standard port 3306).
 
 ### ☕ 2. Running the Spring Boot Backend
-Configure your Gemini API Key in the environment shell:
+
+Copy the `.env.example` file to create your local `.env` and set your properties (including `GEMINI_API_KEY` and `SESSION_TOKEN_SECRET`):
+```bash
+cp .env.example .env
+```
+
+Ensure you export these variables in your shell before running, for example in PowerShell:
 ```powershell
 # Windows PowerShell
 $env:GEMINI_API_KEY="AIzaSyYourApiKeyHere..."
+$env:SESSION_TOKEN_SECRET="your_32_character_minimum_secure_random_string_here"
+```
 
 # Linux / macOS
+```bash
 export GEMINI_API_KEY="AIzaSyYourApiKeyHere..."
+export SESSION_TOKEN_SECRET="your_32_character_minimum_secure_random_string_here"
 ```
 
 Navigate to the `backend/` directory and start:

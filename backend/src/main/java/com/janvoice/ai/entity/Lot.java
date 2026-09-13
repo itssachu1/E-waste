@@ -1,6 +1,8 @@
 package com.janvoice.ai.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -24,7 +26,9 @@ public class Lot {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "selected_price_record_id") private PriceRecord selectedPriceRecord;
     @Column(name = "final_sale_amount", precision = 14, scale = 2) private BigDecimal finalSaleAmount;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "recycler_id") private Recycler recycler;
-    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) private Status status;
+    // Stored as VARCHAR by the Flyway schema (V1); force the JDBC type so
+    // Hibernate's MySQL dialect does not expect a native ENUM column.
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) private Status status;
     @Column(name = "created_at", nullable = false, updatable = false) private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt;
     @PrePersist void onCreate(){LocalDateTime now=LocalDateTime.now();createdAt=now;updatedAt=now;} @PreUpdate void onUpdate(){updatedAt=LocalDateTime.now();}

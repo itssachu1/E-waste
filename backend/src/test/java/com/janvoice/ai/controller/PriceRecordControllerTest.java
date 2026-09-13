@@ -3,8 +3,11 @@ package com.janvoice.ai.controller;
 import com.janvoice.ai.entity.MaterialMaster;
 import com.janvoice.ai.entity.MaterialUnit;
 import com.janvoice.ai.entity.PriceRecord;
+import com.janvoice.ai.repository.LotRepository;
 import com.janvoice.ai.repository.MaterialMasterRepository;
 import com.janvoice.ai.repository.PriceRecordRepository;
+import com.janvoice.ai.repository.RecyclerRepository;
+import com.janvoice.ai.repository.TransactionRepository;
 import com.janvoice.ai.repository.UserRepository;
 import com.janvoice.ai.entity.User;
 import com.janvoice.ai.service.SessionTokenService;
@@ -32,6 +35,9 @@ class PriceRecordControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private MaterialMasterRepository materialRepository;
     @Autowired private PriceRecordRepository priceRepository;
+    @Autowired private LotRepository lotRepository;
+    @Autowired private TransactionRepository transactionRepository;
+    @Autowired private RecyclerRepository recyclerRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private SessionTokenService sessionTokenService;
     private MaterialMaster material;
@@ -42,7 +48,13 @@ class PriceRecordControllerTest {
 
     @BeforeEach
     void setUp() {
+        // FK-safe deletion order: transactions reference lots, lots reference
+        // price records/recyclers/users, price records reference recyclers/users,
+        // recyclers reference users (created_by).
+        transactionRepository.deleteAll();
+        lotRepository.deleteAll();
         priceRepository.deleteAll();
+        recyclerRepository.deleteAll();
         userRepository.deleteAll();
         researcherId = userRepository.save(new User(null, "researcher", "test", "FIELD_RESEARCHER", "Indore")).getId();
         adminId = userRepository.save(new User(null, "admin", "test", "ADMIN", "Indore")).getId();

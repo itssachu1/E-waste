@@ -1,6 +1,8 @@
 package com.janvoice.ai.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +30,9 @@ public class Recycler {
     @Column(name = "pickup_available", nullable = false) private boolean pickupAvailable;
     @Column(name = "pickup_radius", precision = 8, scale = 2) private BigDecimal pickupRadius;
     @Column(name = "service_area", length = 300) private String serviceArea;
-    @Enumerated(EnumType.STRING) @Column(name = "authorization_status", nullable = false, length = 30) private AuthorizationStatus authorizationStatus = AuthorizationStatus.PENDING_VERIFICATION;
+    // Stored as VARCHAR by the Flyway schema (V1); force the JDBC type so
+    // Hibernate's MySQL dialect does not expect a native ENUM column.
+    @JdbcTypeCode(SqlTypes.VARCHAR) @Enumerated(EnumType.STRING) @Column(name = "authorization_status", nullable = false, length = 30) private AuthorizationStatus authorizationStatus = AuthorizationStatus.PENDING_VERIFICATION;
     @Column(name = "registration_number", length = 120) private String registrationNumber;
     @Column(name = "verification_source", length = 500) private String verificationSource;
     @Column(name = "last_verified_at") private LocalDateTime lastVerifiedAt;

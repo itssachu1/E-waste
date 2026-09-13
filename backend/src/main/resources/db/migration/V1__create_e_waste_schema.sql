@@ -9,12 +9,12 @@ CREATE TABLE IF NOT EXISTS users (
     ward_area VARCHAR(50)
 );
 
-ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(120);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(160);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN name VARCHAR(120);
+ALTER TABLE users ADD COLUMN phone VARCHAR(30);
+ALTER TABLE users ADD COLUMN preferred_language VARCHAR(10);
+ALTER TABLE users ADD COLUMN location VARCHAR(160);
+ALTER TABLE users ADD COLUMN created_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN updated_at TIMESTAMP;
 
 CREATE TABLE IF NOT EXISTS material_master (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -162,6 +162,6 @@ CREATE TABLE IF NOT EXISTS field_surveys (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_price_material_validity ON price_records(material_id, valid_until, verification_status);
-CREATE INDEX IF NOT EXISTS idx_lots_collector_status ON lots(collector_id, status);
-CREATE INDEX IF NOT EXISTS idx_transactions_collector_status ON transactions(collector_id, payment_status);
+CREATE INDEX idx_price_material_validity ON price_records(material_id, valid_until, verification_status);
+CREATE INDEX idx_lots_collector_status ON lots(collector_id, status);
+CREATE INDEX idx_transactions_collector_status ON transactions(collector_id, payment_status);

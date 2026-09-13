@@ -21,6 +21,7 @@ class TransactionControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private TransactionRepository transactions;
     @Autowired private LotRepository lots;
+    @Autowired private PriceRecordRepository priceRecords;
     @Autowired private RecyclerRepository recyclers;
     @Autowired private MaterialMasterRepository materials;
     @Autowired private UserRepository users;
@@ -36,7 +37,9 @@ class TransactionControllerTest {
 
     @BeforeEach
     void setUp() {
-        transactions.deleteAll(); lots.deleteAll(); recyclers.deleteAll(); users.deleteAll();
+        // FK-safe deletion order: transactions reference lots, lots reference
+        // price records, price records reference recyclers/users.
+        transactions.deleteAll(); lots.deleteAll(); priceRecords.deleteAll(); recyclers.deleteAll(); users.deleteAll();
         collector = users.save(new User(null, "tx-collector", "test", "CITIZEN", "Indore"));
         other = users.save(new User(null, "tx-other", "test", "CITIZEN", "Indore"));
         recyclerUser = users.save(new User(null, "tx-recycler", "test", "RECYCLER", "Indore"));
