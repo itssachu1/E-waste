@@ -21,3 +21,100 @@
 .safety-item.dont svg{color:#c2410c}
 .safety-list .primary{margin-top:4px;justify-content:center}
 @media(max-width:850px){.safety-grid{grid-template-columns:1fr}}
+
+/* Additional mobile optimizations for very small screens (< 428px) */
+@media(max-width:428px){
+  /* Make touch targets larger (min 44px) */
+  .nav{padding:11px 10px;min-height:44px}
+  .menu-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+  .mobile-close{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+  .profile{width:40px;height:40px}
+  .lang-btn{min-height:44px;padding:8px 12px}
+  .mobile-scan{padding:14px 18px;font-size:14px;min-width:44px}
+  .mobile-scan button{min-height:44px}
+  
+  /* Adjust sidebar for very small screens */
+  .sidebar{width:100%;max-width:280px}
+  .brand-icon{width:36px;height:36px}
+  .brand b{font-size:14px}
+  .nav{font-size:11px;padding:10px 10px}
+  
+  /* Topbar adjustments */
+  .topbar{padding:0 10px;min-height:64px}
+  .topbar h1{font-size:15px}
+  .eyebrow{font-size:6px;letter-spacing:.1em}
+  
+  /* Content padding for small screens */
+  .content{padding:12px 10px 90px}
+  
+  /* Stat cards stack to single column on very small screens */
+  .stats{grid-template-columns:1fr;gap:8px}
+  .stat{padding:11px 12px}
+  .stat strong{font-size:16px}
+  
+  /* Ensure form inputs are accessible */
+  .recycler-tools input{font-size:14px;padding:8px 0}
+  
+  /* Panel and card adjustments */
+  .panel{padding:12px 14px}
+  .hero-card{padding:16px}
+  .hero-card h2{font-size:18px}
+  
+  /* Price grid single column */
+  .price-grid,.earn-grid{grid-template-columns:1fr}
+  
+  /* Trust card text sizing */
+  .trust-card b{font-size:10px}
+  .trust-card p{font-size:9px}
+  
+  /* Ledger meta wraps better */
+  .ledger-meta{gap:4px 10px;padding-left:0;font-size:9px}
+  
+  /* Buttons touch-friendly */
+  button,.primary,.outline,.tiny{
+    min-height:44px;
+    padding:10px 16px;
+  }
+  
+  /* File input/label touch-friendly */
+  label[for^="file"]{min-height:44px;display:flex;align-items:center}
+  
+  /* Step text wraps better */
+  .step{min-width:80px;padding:8px}
+  .step-title{font-size:10px}
+  
+  /* Overflow handling */
+  .workflow{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  
+  /* Prevent horizontal scroll */
+  html,body{overflow-x:hidden}
+  .app{overflow-x:hidden}
+  
+  /* Bottom safe area for notched phones */
+  .mobile-scan{position:fixed;right:12px;bottom:calc(17px + env(safe-area-inset-bottom, 0))}
+}
+
+/* Ensure horizontal scroll is disabled everywhere */
+*{
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+/* Fix for iOS Safari viewport height issues */
+.app{
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+/* Better touch feedback */
+button:active{
+  opacity:0.7;
+  transform:scale(0.98);
+  transition:opacity 0.1s, transform 0.1s;
+}
+
+/* Prevent text zoom on double-tap iOS */
+html{
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
