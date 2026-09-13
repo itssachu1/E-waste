@@ -14,6 +14,10 @@ import java.util.List;
 public interface LotRepository extends JpaRepository<Lot, Long> {
     List<Lot> findByCollectorOrderByCreatedAtDesc(User collector);
     List<Lot> findByCollectorAndStatusOrderByCreatedAtDesc(User collector, Lot.Status status);
+
+    // Lots matched to a recycler profile (recycler handover inbox).
+    List<Lot> findByRecycler_CreatedByOrderByCreatedAtDesc(Long createdBy);
+
     long countByCollector(User collector);
 
     // Aggregate count over a bounded status set (uses idx_lots_collector / idx_lots_status).

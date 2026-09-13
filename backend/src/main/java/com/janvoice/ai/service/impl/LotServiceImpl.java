@@ -46,7 +46,10 @@ public class LotServiceImpl implements LotService {
     @Override @Transactional
     public List<Map<String, Object>> find(User actor, String status) {
         requireAuthenticated(actor);
-        List<Lot> result = "ADMIN".equalsIgnoreCase(actor.getRole()) ? lots.findAll() : lots.findByCollectorOrderByCreatedAtDesc(actor);
+        List<Lot> result;
+        if ("ADMIN".equalsIgnoreCase(actor.getRole())) result = lots.findAll();
+        else if (isRecyclerRole(actor)) result = lots.findByRecycler_CreatedByOrderByCreatedAtDesc(actor.getId());
+        else result = lots.findByCollectorOrderByCreatedAtDesc(actor);
         if (status != null) { Lot.Status requested = parseStatus(status); result = result.stream().filter(lot -> lot.getStatus() == requested).collect(Collectors.toList()); }
         return result.stream().map(this::response).collect(Collectors.toList());
     }
@@ -62,12 +65,21 @@ public class LotServiceImpl implements LotService {
     public Map<String, Object> updateStatus(Long id, LotStatusRequest request, User actor) {
         requireAuthenticated(actor); Lot lot = lots.findById(id).orElseThrow(() -> notFound("Lot not found"));
         Lot.Status target = request.getStatus();
-        if (target == Lot.Status.QUOTE_RECEIVED || target == Lot.Status.HANDED_OVER || target == Lot.Status.RECYCLER_CONFIRMED || target == Lot.Status.PAID) throw bad("This status is reserved for a later phase");
+        if (request.getFinalWeight() != null && request.getFinalWeight().signum() <= 0) throw bad("final_weight must be positive");
+        if (target == Lot.Status.PAID) throw bad("PAID is reserved for the transaction ledger flow");
         if ("ADMIN".equalsIgnoreCase(actor.getRole())) throw bad("Admin cannot bypass the lot state machine");
         boolean owner = lot.getCollector().getId().equals(actor.getId());
         if (owner) {
-            if (!lot.getCollector().getId().equals(actor.getId()) || !allowedCollector(lot.getStatus(), target)) throw bad("Invalid collector status transition");
-        } else if (!isRecyclerActor(lot, actor) || lot.getStatus() != Lot.Status.QUOTE_REQUESTED || target != Lot.Status.QUOTE_RECEIVED) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the lot owner or matched recycler may make this transition");
+            if (!allowedCollector(lot.getStatus(), target)) throw bad("Invalid collector status transition");
+        } else if (!isRecyclerActor(lot, actor) || !allowedRecycler(lot.getStatus(), target)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the lot owner or matched recycler may make this transition");
+        }
+        // Phase 8 handover confirmation is recorded directly on the lot.
+        if (target == Lot.Status.HANDED_OVER) lot.setHandedOverAt(LocalDateTime.now());
+        if (target == Lot.Status.RECYCLER_CONFIRMED) {
+            lot.setRecyclerConfirmedAt(LocalDateTime.now());
+            if (request.getFinalWeight() != null) lot.setFinalWeight(request.getFinalWeight());
+        }
         lot.setStatus(target); return response(lots.save(lot));
     }
 
@@ -83,12 +95,14 @@ public class LotServiceImpl implements LotService {
 
     private String nextReference() { int year = LocalDate.now().getYear(); return String.format("EWS-%04d-%06d", year, counters.nextNumber(year)); }
     private boolean expired(PriceRecord p) { return p.getValidUntil() != null ? p.getValidUntil().isBefore(LocalDateTime.now()) : p.getQuotedAt().plusDays(30).isBefore(LocalDateTime.now()); }
-    private boolean allowedCollector(Lot.Status from, Lot.Status to) { return (from == Lot.Status.CREATED && (to == Lot.Status.QUOTE_REQUESTED || to == Lot.Status.CANCELLED)) || (from == Lot.Status.ACCEPTED && (to == Lot.Status.READY_FOR_HANDOVER || to == Lot.Status.CANCELLED)); }
+    private boolean allowedCollector(Lot.Status from, Lot.Status to) { return (from == Lot.Status.CREATED && (to == Lot.Status.QUOTE_REQUESTED || to == Lot.Status.CANCELLED)) || (from == Lot.Status.QUOTE_RECEIVED && (to == Lot.Status.ACCEPTED || to == Lot.Status.CANCELLED)) || (from == Lot.Status.ACCEPTED && (to == Lot.Status.READY_FOR_HANDOVER || to == Lot.Status.CANCELLED)) || (from == Lot.Status.READY_FOR_HANDOVER && (to == Lot.Status.HANDED_OVER || to == Lot.Status.CANCELLED)); }
+    private boolean allowedRecycler(Lot.Status from, Lot.Status to) { return (from == Lot.Status.QUOTE_REQUESTED && to == Lot.Status.QUOTE_RECEIVED) || (from == Lot.Status.HANDED_OVER && to == Lot.Status.RECYCLER_CONFIRMED); }
+    private boolean isRecyclerRole(User actor){ return "RECYCLER".equalsIgnoreCase(actor.getRole()) || "VERIFIED_RECYCLER".equalsIgnoreCase(actor.getRole()); }
     private boolean isRecyclerActor(Lot lot, User actor) { return lot.getRecycler() != null && lot.getRecycler().getCreatedBy() != null && lot.getRecycler().getCreatedBy().equals(actor.getId()); }
     private boolean canAccess(Lot lot, User actor) { return "ADMIN".equalsIgnoreCase(actor.getRole()) || lot.getCollector().getId().equals(actor.getId()) || isRecyclerActor(lot, actor); }
     private void requireCollector(User actor) { requireAuthenticated(actor); if (!"COLLECTOR".equalsIgnoreCase(actor.getRole()) && !"CITIZEN".equalsIgnoreCase(actor.getRole())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Collector role required"); }
     private void requireAuthenticated(User actor) { if (actor == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Valid session token required"); }
     private Lot.Status parseStatus(String value) { try { return Lot.Status.valueOf(value.toUpperCase(Locale.ROOT)); } catch (IllegalArgumentException e) { throw bad("Unknown lot status"); } }
-    private Map<String, Object> response(Lot lot) { Map<String,Object> map=new LinkedHashMap<>(); map.put("id",lot.getId()); map.put("lot_reference",lot.getLotReference()); map.put("collector_id",lot.getCollector().getId()); map.put("material_id",lot.getMaterial().getId()); map.put("material_name",lot.getMaterial().getCommonName()); map.put("description",lot.getDescription()); map.put("photo_url",lot.getPhotoUrl()); map.put("approximate_weight",lot.getApproximateWeight()); map.put("final_weight",lot.getFinalWeight()); map.put("estimated_value",lot.getEstimatedValue()); map.put("selected_price_record_id",lot.getSelectedPriceRecord()==null?null:lot.getSelectedPriceRecord().getId()); map.put("final_sale_amount",lot.getFinalSaleAmount()); map.put("recycler_id",lot.getRecycler()==null?null:lot.getRecycler().getId()); map.put("status",lot.getStatus()); map.put("created_at",lot.getCreatedAt()); map.put("updated_at",lot.getUpdatedAt()); return map; }
+    private Map<String, Object> response(Lot lot) { Map<String,Object> map=new LinkedHashMap<>(); map.put("id",lot.getId()); map.put("lot_reference",lot.getLotReference()); map.put("collector_id",lot.getCollector().getId()); map.put("material_id",lot.getMaterial().getId()); map.put("material_name",lot.getMaterial().getCommonName()); map.put("description",lot.getDescription()); map.put("photo_url",lot.getPhotoUrl()); map.put("approximate_weight",lot.getApproximateWeight()); map.put("final_weight",lot.getFinalWeight()); map.put("estimated_value",lot.getEstimatedValue()); map.put("selected_price_record_id",lot.getSelectedPriceRecord()==null?null:lot.getSelectedPriceRecord().getId()); map.put("final_sale_amount",lot.getFinalSaleAmount()); map.put("recycler_id",lot.getRecycler()==null?null:lot.getRecycler().getId()); map.put("status",lot.getStatus()); map.put("handed_over_at",lot.getHandedOverAt()); map.put("recycler_confirmed_at",lot.getRecyclerConfirmedAt()); map.put("created_at",lot.getCreatedAt()); map.put("updated_at",lot.getUpdatedAt()); return map; }
     private ResponseStatusException bad(String message){return new ResponseStatusException(HttpStatus.BAD_REQUEST,message);} private ResponseStatusException notFound(String message){return new ResponseStatusException(HttpStatus.NOT_FOUND,message);}
 }

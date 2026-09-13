@@ -95,6 +95,15 @@ export const lotService = {
         const response = await api.patch(`/lots/${id}/status`, { status });
         return response.data;
     },
+    // Phase 8 handover flow: confirmation is recorded directly on the lot.
+    markHandedOver: async (id) => {
+        const response = await api.patch(`/lots/${id}/status`, { status: 'HANDED_OVER' });
+        return response.data;
+    },
+    confirmHandover: async (id, finalWeight = null) => {
+        const response = await api.patch(`/lots/${id}/status`, { status: 'RECYCLER_CONFIRMED', finalWeight });
+        return response.data;
+    },
     assignRecycler: async (id, recyclerId) => {
         const response = await api.patch(`/lots/${id}/recycler`, { recyclerId });
         return response.data;
