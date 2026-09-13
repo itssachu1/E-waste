@@ -4,7 +4,8 @@ import {
   ArrowRight, CheckCircle2, ShieldCheck, TrendingUp, QrCode,
   Search, X, Leaf, Smartphone, Laptop, Battery, Cable, CircuitBoard,
   ChevronRight, Clock3, Truck, CircleAlert, ScanLine, Banknote,
-  Languages, Menu, XCircle
+  Languages, Menu, XCircle,
+  Flame, FlaskConical, Monitor, TriangleAlert, Hand, PackageCheck, ShieldAlert, HeartPulse
 } from "lucide-react";
 import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService } from "./services/api";
 import "./App.css";
@@ -25,15 +26,15 @@ function materialIcon(material) {
 
 const copy = {
   en: {
-    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", transactions: "Transaction history", earnings: "Your earnings ledger" },
-    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "Transactions", "My Earnings"],
+    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", transactions: "Transaction history", earnings: "Your earnings ledger", safety: "Handle e-waste safely" },
+    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "Transactions", "My Earnings", "Safety Guide"],
     greeting: "Good afternoon, Sachin", dashboardTitle: "Turn e-waste materials into traceable value.",
     dashboardText: "Identify electronic devices, see a fair price, find an authorized recycler and keep a digital earnings record.",
     scan: "Scan e-waste", prices: "Check prices", viewAll: "View all", quickActions: "Quick actions", startWorkflow: "Start a collection workflow",
   },
   hi: {
-    pageTitles: { scan: "ई-वेस्ट सामग्री पहचानें", prices: "आज के उचित भाव", recyclers: "पास के अधिकृत रीसाइकलर", lots: "आपके डिजिटल सामग्री लॉट", transactions: "लेन-देन इतिहास", earnings: "आपकी कमाई का रिकॉर्ड" },
-    nav: ["डैशबोर्ड", "ई-वेस्ट स्कैन", "आज के भाव", "रीसाइकलर खोजें", "मेरे लॉट", "लेन-देन", "मेरी कमाई"],
+    pageTitles: { scan: "ई-वेस्ट सामग्री पहचानें", prices: "आज के उचित भाव", recyclers: "पास के अधिकृत रीसाइकलर", lots: "आपके डिजिटल सामग्री लॉट", transactions: "लेन-देन इतिहास", earnings: "आपकी कमाई का रिकॉर्ड", safety: "ई-वेस्ट को सुरक्षित रखें" },
+    nav: ["डैशबोर्ड", "ई-वेस्ट स्कैन", "आज के भाव", "रीसाइकलर खोजें", "मेरे लॉट", "लेन-देन", "मेरी कमाई", "सुरक्षा मार्गदर्शन"],
     greeting: "नमस्ते, सचिन", dashboardTitle: "ई-वेस्ट सामग्री को रिकॉर्ड योग्य मूल्य में बदलें।",
     dashboardText: "इलेक्ट्रॉनिक उपकरण पहचानें, उचित भाव देखें, अधिकृत रीसाइकलर खोजें और कमाई का डिजिटल रिकॉर्ड रखें।",
     scan: "ई-वेस्ट स्कैन करें", prices: "भाव देखें", viewAll: "सभी देखें", quickActions: "त्वरित कार्य", startWorkflow: "संग्रह प्रक्रिया शुरू करें",
@@ -219,7 +220,7 @@ export default function App() {
             <button className="mobile-close" onClick={() => setMobileMenu(false)}><X size={18}/></button>
           </div>
           <nav>
-            {[ ["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards] ].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
+            {[ ["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert] ].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
           </nav>
         </div>
         <div className="trust-card">
@@ -251,6 +252,7 @@ export default function App() {
         {active === "lots" && <Lots lots={lots} status={lotStatus} setActive={navigate} hindi={hindi} refreshLots={refreshLots}/>}
         {active === "transactions" && <Transactions lots={lots} transactions={transactions} status={transactionStatus} refreshLedger={refreshLedger} hindi={hindi}/>}
         {active === "earnings" && <Earnings earnings={earnings} status={earningsStatus} transactions={transactions} hindi={hindi}/>}
+        {active === "safety" && <Safety hindi={hindi} setActive={navigate}/>}
       </main>
 
       <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19}/> {hindi ? "स्कैन" : "Scan"}</button>
@@ -441,3 +443,56 @@ function LotRow({lot}) { return <div className="lot-row"><div className="lot-ico
 function DashboardLotRow({lot,hindi}) { return <div className="lot-row"><div className="lot-icon"><Package size={18}/></div><div><b>{lot.lot_reference}</b><span>{lot.material_name} • {Number(lot.approximate_weight || 0).toFixed(1)} kg • {lot.created_at ? new Date(lot.created_at).toLocaleDateString("en-IN") : ""}</span></div><div className="lot-right"><strong>{lot.estimated_value == null ? (hindi ? "उपलब्ध नहीं" : "Not available") : `₹${Number(lot.estimated_value).toLocaleString("en-IN")}`}</strong><small className={lot.status === "PAID" ? "done-text" : "pending-text"}>{lot.status}</small></div></div>; }
 function DashboardTxRow({tx,hindi}) { return <div className="lot-row"><div className="lot-icon"><Banknote size={18}/></div><div><b>{tx.lot_reference}</b><span>{tx.payment_mode} • ₹{Number(tx.amount || 0).toLocaleString("en-IN")} • {tx.created_at ? new Date(tx.created_at).toLocaleDateString("en-IN") : ""}</span></div><div className="lot-right"><small className={tx.payment_status === "PAID" ? "done-text" : "pending-text"}>{tx.payment_status}</small></div></div>; }
 function EmptyState({text}) { return <div className="empty"><XCircle size={23}/><span>{text}</span></div>; }
+
+/**
+ * Safety Guide: safe e-waste handling (do's, don'ts, battery/CRT care).
+ * Static civic-safety content — bilingual, spoken summary included.
+ */
+function Safety({hindi,setActive}) {
+  const dos = [
+    { icon: Hand, text: hindi ? "उपकरण सूखे और ठंडे कंटेनर में अलग रखें।" : "Store devices separately in a dry, cool container." },
+    { icon: PackageCheck, text: hindi ? "फोटो लेकर सामग्री डेटाबेस से पुष्टि करें।" : "Capture a photo and confirm the material from the database." },
+    { icon: ShieldAlert, text: hindi ? "केवल ऐप के सत्यापित रीसाइकलर को लॉट हैंडओवर करें।" : "Hand over lots only to the app's verified recyclers." },
+    { icon: HeartPulse, text: hindi ? "हैंडओवर का रिकॉर्ड रखें ताकि ट्रेसबिलिटी बनी रहे।" : "Keep a handover record so traceability is maintained." },
+  ];
+  const donts = [
+    { icon: Flame, text: hindi ? "तार या बोर्ड जलाकर तांबा न निकालें — धुआं जहरीला है।" : "Never burn cables or boards to recover copper — the fumes are toxic." },
+    { icon: TriangleAlert, text: hindi ? "बैटरी को न चुनें, न कुचलें — आग लग सकती है।" : "Never puncture or crush batteries — they can catch fire." },
+    { icon: Monitor, text: hindi ? "CRT स्क्रीन न तोड़ें — कांच में सीसा होता है।" : "Do not break CRT screens — the glass contains lead." },
+    { icon: Package, text: hindi ? "अनजान खरीदार को उपकरण न दें।" : "Do not hand devices to unverified buyers." },
+  ];
+  const spoken = hindi
+    ? "सुरक्षा मार्गदर्शन। उपकरण सूखे कंटेनर में रखें, केवल सत्यापित रीसाइकलर को हैंडओवर करें। तार न जलाएं, बैटरी न चुनें, CRT स्क्रीन न तोड़ें।"
+    : "Safety guide. Store devices in a dry container, hand over only to verified recyclers. Never burn cables, never puncture batteries, never break CRT screens.";
+  return <section className="content">
+    <div className="hero-card compact-hero"><div><span className="pill">{hindi ? "सुरक्षा" : "SAFETY"}</span><h2>{hindi ? "ई-वेस्ट को सुरक्षित रखें" : "Handle e-waste safely"}</h2><p>{hindi ? "सही भाव जानें और हर handover का रिकॉर्ड रखें।" : "Know the fair value and keep a traceable handover record."}</p></div><div className="hero-symbol"><ShieldAlert size={40}/></div></div>
+    <div className="safety-grid">
+      <div className="panel">
+        <div className="panel-title"><div><h3>{hindi ? "यह करें" : "Safe handling"}</h3><p>{hindi ? "सामग्री का औपचारिक रिकॉर्ड बनाए।" : "Build a formal record of the material."}</p></div><ShieldCheck size={20}/></div>
+        <div className="safety-list">{dos.map(({icon:Icon,text}) => <div className="safety-item do" key={text}><Icon size={16}/><span>{text}</span></div>)}</div>
+      </div>
+      <div className="panel">
+        <div className="panel-title"><div><h3>{hindi ? "यह कभी न करें" : "Never do"}</h3><p>{hindi ? "जहरीली प्रक्रिया से बचें।" : "Avoid toxic processes."}</p></div><Flame size={20}/></div>
+        <div className="safety-list">{donts.map(({icon:Icon,text}) => <div className="safety-item dont" key={text}><Icon size={16}/><span>{text}</span></div>)}</div>
+      </div>
+    </div>
+    <div className="safety-grid">
+      <div className="panel">
+        <div className="panel-title"><div><h3>{hindi ? "बैटरी विशेष देखभाल" : "Battery special care"}</h3><p>{hindi ? "लिथियम बैटरी आग का जोखिम।" : "Lithium batteries are a fire risk."}</p></div><Battery size={20}/></div>
+        <div className="safety-list">
+          <div className="safety-item do"><Battery size={16}/><span>{hindi ? "बैटरी सावधानी से स्टोर करें और धातु संपर्क से दूर रखें।" : "Store batteries with care and away from metal contacts."}</span></div>
+          <div className="safety-item dont"><FlaskConical size={16}/><span>{hindi ? "फूली या रिस रही बैटरी को न छेदें; विशेष संभाल की जरूरत है।" : "Swollen or leaking batteries demand special handling — do not pierce them."}</span></div>
+        </div>
+      </div>
+      <div className="panel">
+        <div className="panel-title"><div><h3>{hindi ? "अगला कदम" : "Next step"}</h3><p>{hindi ? "सुरक्षित हैंडओवर ऐप से करें।" : "Do the safe handover in the app."}</p></div><Recycle size={20}/></div>
+        <div className="safety-list">
+          <div className="safety-item do"><Hand size={16}/><span>{hindi ? "स्कैन पेज से डिजिटल लॉट बनाएं।" : "Create a digital lot from the Scan page."}</span></div>
+          <div className="safety-item do"><Recycle size={16}/><span>{hindi ? "सत्यापित रीसाइकलर खोजने के लिए रीसाइकलर पेज खोलें।" : "Open the Recyclers page to find a verified recycler."}</span></div>
+          <button className="primary" onClick={() => setActive("scan")}><Camera size={16}/> {hindi ? "नया लॉट बनाएं" : "Create a new lot"}</button>
+        </div>
+      </div>
+    </div>
+    <SpokenButton text={spoken} hindi={hindi}/>
+  </section>;
+}
