@@ -123,4 +123,20 @@ export const earningsService = {
     },
 };
 
+export const dashboardService = {
+    // Aggregated collector stats, computed live from DB aggregates on the backend.
+    summary: async () => {
+        const response = await api.get('/dashboard/summary');
+        return response.data;
+    },
+    recentLots: async (limit = 5) => {
+        const response = await api.get('/dashboard/recent-lots', { params: { limit } });
+        return response.data;
+    },
+    recentTransactions: async (limit = 5) => {
+        const response = await api.get('/dashboard/recent-transactions', { params: { limit } });
+        return response.data;
+    },
+};
+
 export default api;

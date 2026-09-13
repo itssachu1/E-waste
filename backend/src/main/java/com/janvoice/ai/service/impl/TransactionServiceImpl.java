@@ -76,11 +76,12 @@ public class TransactionServiceImpl implements TransactionService {
     @Override @Transactional
     public Map<String,Object> earnings(User actor) {
         requireAuthenticated(actor); if (!"COLLECTOR".equalsIgnoreCase(actor.getRole()) && !"CITIZEN".equalsIgnoreCase(actor.getRole())) throw forbidden("Collector role required");
-        List<Transaction> own = transactions.findByCollectorOrderByCreatedAtDesc(actor);
-        BigDecimal total = own.stream().filter(t -> t.getPaymentStatus() == Transaction.PaymentStatus.PAID).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal pending = own.stream().filter(t -> t.getPaymentStatus() == Transaction.PaymentStatus.PENDING).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal kg = own.stream().filter(t -> t.getPaymentStatus() == Transaction.PaymentStatus.PAID).map(t -> t.getLot().getFinalWeight() == null ? t.getLot().getApproximateWeight() : t.getLot().getFinalWeight()).reduce(BigDecimal.ZERO, BigDecimal::add);
-        Map<String,Object> result = new LinkedHashMap<>(); result.put("total_earnings", total); result.put("pending_amount", pending); result.put("total_kg_collected", kg); result.put("completed_handovers_count", own.stream().filter(t -> t.getPaymentStatus() == Transaction.PaymentStatus.PAID).count()); return result;
+        // Aggregates run in the database (indexed SUM/COUNT) — collect only the collector's own rows.
+        BigDecimal total = transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID);
+        BigDecimal pending = transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PENDING);
+        BigDecimal kg = transactions.sumWeightByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID);
+        long paid = transactions.countByCollectorAndPaymentStatus(actor, Transaction.PaymentStatus.PAID);
+        Map<String,Object> result = new LinkedHashMap<>(); result.put("total_earnings", total); result.put("pending_amount", pending); result.put("total_kg_collected", kg); result.put("completed_handovers_count", paid); return result;
     }
 
     private boolean eligible(Lot.Status status){ return status == Lot.Status.READY_FOR_HANDOVER || status == Lot.Status.HANDED_OVER; }
