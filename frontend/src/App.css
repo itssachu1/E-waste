@@ -10,3 +10,14 @@
 .handover-confirm{display:flex;gap:6px;align-items:center;margin-top:6px}
 .handover-confirm input{width:92px;border:1px solid #c9d9cb;border-radius:8px;padding:6px 8px;font-size:11px;color:#17211b}
 .handover-confirm input:focus{outline:none;border-color:#168448}
+/* Safety Guide page */
+.safety-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:15px}
+.safety-list{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+.safety-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:#f3f7f4;font-size:12px;line-height:1.5;color:#3c4a41}
+.safety-item svg{flex-shrink:0;margin-top:1px}
+.safety-item.do{background:#eef8f1}
+.safety-item.do svg{color:#168448}
+.safety-item.dont{background:#fdf1ef}
+.safety-item.dont svg{color:#c2410c}
+.safety-list .primary{margin-top:4px;justify-content:center}
+@media(max-width:850px){.safety-grid{grid-template-columns:1fr}}

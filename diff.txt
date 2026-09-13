@@ -1,0 +1,108 @@
+﻿diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index f032639..0bdee70 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -4,7 +4,8 @@ import {
+   ArrowRight, CheckCircle2, ShieldCheck, TrendingUp, QrCode,
+   Search, X, Leaf, Smartphone, Laptop, Battery, Cable, CircuitBoard,
+   ChevronRight, Clock3, Truck, CircleAlert, ScanLine, Banknote,
+-  Languages, Menu, XCircle
++  Languages, Menu, XCircle,
++  Flame, FlaskConical, Monitor, TriangleAlert, Hand, PackageCheck, ShieldAlert, HeartPulse
+ } from "lucide-react";
+ import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService } from "./services/api";
+ import "./App.css";
+@@ -25,15 +26,15 @@ function materialIcon(material) {
+ 
+ const copy = {
+   en: {
+-    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", transactions: "Transaction history", earnings: "Your earnings ledger" },
+-    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "Transactions", "My Earnings"],
++    pageTitles: { scan: "Scan & identify electronic devices", prices: "Today's fair-price reference", recyclers: "Verified recyclers near you", lots: "Your digital material lots", transactions: "Transaction history", earnings: "Your earnings ledger", safety: "Handle e-waste safely" },
++    nav: ["Dashboard", "Scan E-Waste", "Today's Prices", "Find Recycler", "My Lots", "Transactions", "My Earnings", "Safety Guide"],
+     greeting: "Good afternoon, Sachin", dashboardTitle: "Turn e-waste materials into traceable value.",
+     dashboardText: "Identify electronic devices, see a fair price, find an authorized recycler and keep a digital earnings record.",
+     scan: "Scan e-waste", prices: "Check prices", viewAll: "View all", quickActions: "Quick actions", startWorkflow: "Start a collection workflow",
+   },
+   hi: {
+-    pageTitles: { scan: "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñ¬αñ╣αñÜαñ╛αñ¿αÑçαñé", prices: "αñåαñ£ αñòαÑç αñëαñÜαñ┐αññ αñ¡αñ╛αñ╡", recyclers: "αñ¬αñ╛αñ╕ αñòαÑç αñàαñºαñ┐αñòαÑâαññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░", lots: "αñåαñ¬αñòαÑç αñíαñ┐αñ£αñ┐αñƒαñ▓ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñ▓αÑëαñƒ", transactions: "αñ▓αÑçαñ¿-αñªαÑçαñ¿ αñçαññαñ┐αñ╣αñ╛αñ╕", earnings: "αñåαñ¬αñòαÑÇ αñòαñ«αñ╛αñê αñòαñ╛ αñ░αñ┐αñòαÑëαñ░αÑìαñí" },
+-    nav: ["αñíαÑêαñ╢αñ¼αÑïαñ░αÑìαñí", "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αÑìαñòαÑêαñ¿", "αñåαñ£ αñòαÑç αñ¡αñ╛αñ╡", "αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñûαÑïαñ£αÑçαñé", "αñ«αÑçαñ░αÑç αñ▓αÑëαñƒ", "αñ▓αÑçαñ¿-αñªαÑçαñ¿", "αñ«αÑçαñ░αÑÇ αñòαñ«αñ╛αñê"],
++    pageTitles: { scan: "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñ¬αñ╣αñÜαñ╛αñ¿αÑçαñé", prices: "αñåαñ£ αñòαÑç αñëαñÜαñ┐αññ αñ¡αñ╛αñ╡", recyclers: "αñ¬αñ╛αñ╕ αñòαÑç αñàαñºαñ┐αñòαÑâαññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░", lots: "αñåαñ¬αñòαÑç αñíαñ┐αñ£αñ┐αñƒαñ▓ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñ▓αÑëαñƒ", transactions: "αñ▓αÑçαñ¿-αñªαÑçαñ¿ αñçαññαñ┐αñ╣αñ╛αñ╕", earnings: "αñåαñ¬αñòαÑÇ αñòαñ«αñ╛αñê αñòαñ╛ αñ░αñ┐αñòαÑëαñ░αÑìαñí", safety: "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñòαÑï αñ╕αÑüαñ░αñòαÑìαñ╖αñ┐αññ αñ░αñûαÑçαñé" },
++    nav: ["αñíαÑêαñ╢αñ¼αÑïαñ░αÑìαñí", "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αÑìαñòαÑêαñ¿", "αñåαñ£ αñòαÑç αñ¡αñ╛αñ╡", "αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñûαÑïαñ£αÑçαñé", "αñ«αÑçαñ░αÑç αñ▓αÑëαñƒ", "αñ▓αÑçαñ¿-αñªαÑçαñ¿", "αñ«αÑçαñ░αÑÇ αñòαñ«αñ╛αñê", "αñ╕αÑüαñ░αñòαÑìαñ╖αñ╛ αñ«αñ╛αñ░αÑìαñùαñªαñ░αÑìαñ╢αñ¿"],
+     greeting: "αñ¿αñ«αñ╕αÑìαññαÑç, αñ╕αñÜαñ┐αñ¿", dashboardTitle: "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñòαÑï αñ░αñ┐αñòαÑëαñ░αÑìαñí αñ»αÑïαñùαÑìαñ» αñ«αÑéαñ▓αÑìαñ» αñ«αÑçαñé αñ¼αñªαñ▓αÑçαñéαÑñ",
+     dashboardText: "αñçαñ▓αÑçαñòαÑìαñƒαÑìαñ░αÑëαñ¿αñ┐αñò αñëαñ¬αñòαñ░αñú αñ¬αñ╣αñÜαñ╛αñ¿αÑçαñé, αñëαñÜαñ┐αññ αñ¡αñ╛αñ╡ αñªαÑçαñûαÑçαñé, αñàαñºαñ┐αñòαÑâαññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñûαÑïαñ£αÑçαñé αñöαñ░ αñòαñ«αñ╛αñê αñòαñ╛ αñíαñ┐αñ£αñ┐αñƒαñ▓ αñ░αñ┐αñòαÑëαñ░αÑìαñí αñ░αñûαÑçαñéαÑñ",
+     scan: "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñ╕αÑìαñòαÑêαñ¿ αñòαñ░αÑçαñé", prices: "αñ¡αñ╛αñ╡ αñªαÑçαñûαÑçαñé", viewAll: "αñ╕αñ¡αÑÇ αñªαÑçαñûαÑçαñé", quickActions: "αññαÑìαñ╡αñ░αñ┐αññ αñòαñ╛αñ░αÑìαñ»", startWorkflow: "αñ╕αñéαñùαÑìαñ░αñ╣ αñ¬αÑìαñ░αñòαÑìαñ░αñ┐αñ»αñ╛ αñ╢αÑüαñ░αÑé αñòαñ░αÑçαñé",
+@@ -219,7 +220,7 @@ export default function App() {
+             <button className="mobile-close" onClick={() => setMobileMenu(false)}><X size={18}/></button>
+           </div>
+           <nav>
+-            {[ ["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards] ].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
++            {[ ["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert] ].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18}/>} setActive={navigate}/>)}
+           </nav>
+         </div>
+         <div className="trust-card">
+@@ -251,6 +252,7 @@ export default function App() {
+         {active === "lots" && <Lots lots={lots} status={lotStatus} setActive={navigate} hindi={hindi} refreshLots={refreshLots}/>}
+         {active === "transactions" && <Transactions lots={lots} transactions={transactions} status={transactionStatus} refreshLedger={refreshLedger} hindi={hindi}/>}
+         {active === "earnings" && <Earnings earnings={earnings} status={earningsStatus} transactions={transactions} hindi={hindi}/>}
++        {active === "safety" && <Safety hindi={hindi} setActive={navigate}/>}
+       </main>
+ 
+       <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19}/> {hindi ? "αñ╕αÑìαñòαÑêαñ¿" : "Scan"}</button>
+@@ -441,3 +443,56 @@ function LotRow({lot}) { return <div className="lot-row"><div className="lot-ico
+ function DashboardLotRow({lot,hindi}) { return <div className="lot-row"><div className="lot-icon"><Package size={18}/></div><div><b>{lot.lot_reference}</b><span>{lot.material_name} ΓÇó {Number(lot.approximate_weight || 0).toFixed(1)} kg ΓÇó {lot.created_at ? new Date(lot.created_at).toLocaleDateString("en-IN") : ""}</span></div><div className="lot-right"><strong>{lot.estimated_value == null ? (hindi ? "αñëαñ¬αñ▓αñ¼αÑìαñº αñ¿αñ╣αÑÇαñé" : "Not available") : `Γé╣${Number(lot.estimated_value).toLocaleString("en-IN")}`}</strong><small className={lot.status === "PAID" ? "done-text" : "pending-text"}>{lot.status}</small></div></div>; }
+ function DashboardTxRow({tx,hindi}) { return <div className="lot-row"><div className="lot-icon"><Banknote size={18}/></div><div><b>{tx.lot_reference}</b><span>{tx.payment_mode} ΓÇó Γé╣{Number(tx.amount || 0).toLocaleString("en-IN")} ΓÇó {tx.created_at ? new Date(tx.created_at).toLocaleDateString("en-IN") : ""}</span></div><div className="lot-right"><small className={tx.payment_status === "PAID" ? "done-text" : "pending-text"}>{tx.payment_status}</small></div></div>; }
+ function EmptyState({text}) { return <div className="empty"><XCircle size={23}/><span>{text}</span></div>; }
++
++/**
++ * Safety Guide: safe e-waste handling (do's, don'ts, battery/CRT care).
++ * Static civic-safety content ΓÇö bilingual, spoken summary included.
++ */
++function Safety({hindi,setActive}) {
++  const dos = [
++    { icon: Hand, text: hindi ? "αñëαñ¬αñòαñ░αñú αñ╕αÑéαñûαÑç αñöαñ░ αñáαñéαñíαÑç αñòαñéαñƒαÑçαñ¿αñ░ αñ«αÑçαñé αñàαñ▓αñù αñ░αñûαÑçαñéαÑñ" : "Store devices separately in a dry, cool container." },
++    { icon: PackageCheck, text: hindi ? "αñ½αÑïαñƒαÑï αñ▓αÑçαñòαñ░ αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñíαÑçαñƒαñ╛αñ¼αÑçαñ╕ αñ╕αÑç αñ¬αÑüαñ╖αÑìαñƒαñ┐ αñòαñ░αÑçαñéαÑñ" : "Capture a photo and confirm the material from the database." },
++    { icon: ShieldAlert, text: hindi ? "αñòαÑçαñ╡αñ▓ αñÉαñ¬ αñòαÑç αñ╕αññαÑìαñ»αñ╛αñ¬αñ┐αññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñòαÑï αñ▓αÑëαñƒ αñ╣αÑêαñéαñíαñôαñ╡αñ░ αñòαñ░αÑçαñéαÑñ" : "Hand over lots only to the app's verified recyclers." },
++    { icon: HeartPulse, text: hindi ? "αñ╣αÑêαñéαñíαñôαñ╡αñ░ αñòαñ╛ αñ░αñ┐αñòαÑëαñ░αÑìαñí αñ░αñûαÑçαñé αññαñ╛αñòαñ┐ αñƒαÑìαñ░αÑçαñ╕αñ¼αñ┐αñ▓αñ┐αñƒαÑÇ αñ¼αñ¿αÑÇ αñ░αñ╣αÑçαÑñ" : "Keep a handover record so traceability is maintained." },
++  ];
++  const donts = [
++    { icon: Flame, text: hindi ? "αññαñ╛αñ░ αñ»αñ╛ αñ¼αÑïαñ░αÑìαñí αñ£αñ▓αñ╛αñòαñ░ αññαñ╛αñéαñ¼αñ╛ αñ¿ αñ¿αñ┐αñòαñ╛αñ▓αÑçαñé ΓÇö αñºαÑüαñåαñé αñ£αñ╣αñ░αÑÇαñ▓αñ╛ αñ╣αÑêαÑñ" : "Never burn cables or boards to recover copper ΓÇö the fumes are toxic." },
++    { icon: TriangleAlert, text: hindi ? "αñ¼αÑêαñƒαñ░αÑÇ αñòαÑï αñ¿ αñÜαÑüαñ¿αÑçαñé, αñ¿ αñòαÑüαñÜαñ▓αÑçαñé ΓÇö αñåαñù αñ▓αñù αñ╕αñòαññαÑÇ αñ╣αÑêαÑñ" : "Never puncture or crush batteries ΓÇö they can catch fire." },
++    { icon: Monitor, text: hindi ? "CRT αñ╕αÑìαñòαÑìαñ░αÑÇαñ¿ αñ¿ αññαÑïαñíαñ╝αÑçαñé ΓÇö αñòαñ╛αñéαñÜ αñ«αÑçαñé αñ╕αÑÇαñ╕αñ╛ αñ╣αÑïαññαñ╛ αñ╣αÑêαÑñ" : "Do not break CRT screens ΓÇö the glass contains lead." },
++    { icon: Package, text: hindi ? "αñàαñ¿αñ£αñ╛αñ¿ αñûαñ░αÑÇαñªαñ╛αñ░ αñòαÑï αñëαñ¬αñòαñ░αñú αñ¿ αñªαÑçαñéαÑñ" : "Do not hand devices to unverified buyers." },
++  ];
++  const spoken = hindi
++    ? "αñ╕αÑüαñ░αñòαÑìαñ╖αñ╛ αñ«αñ╛αñ░αÑìαñùαñªαñ░αÑìαñ╢αñ¿αÑñ αñëαñ¬αñòαñ░αñú αñ╕αÑéαñûαÑç αñòαñéαñƒαÑçαñ¿αñ░ αñ«αÑçαñé αñ░αñûαÑçαñé, αñòαÑçαñ╡αñ▓ αñ╕αññαÑìαñ»αñ╛αñ¬αñ┐αññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñòαÑï αñ╣αÑêαñéαñíαñôαñ╡αñ░ αñòαñ░αÑçαñéαÑñ αññαñ╛αñ░ αñ¿ αñ£αñ▓αñ╛αñÅαñé, αñ¼αÑêαñƒαñ░αÑÇ αñ¿ αñÜαÑüαñ¿αÑçαñé, CRT αñ╕αÑìαñòαÑìαñ░αÑÇαñ¿ αñ¿ αññαÑïαñíαñ╝αÑçαñéαÑñ"
++    : "Safety guide. Store devices in a dry container, hand over only to verified recyclers. Never burn cables, never puncture batteries, never break CRT screens.";
++  return <section className="content">
++    <div className="hero-card compact-hero"><div><span className="pill">{hindi ? "αñ╕αÑüαñ░αñòαÑìαñ╖αñ╛" : "SAFETY"}</span><h2>{hindi ? "αñê-αñ╡αÑçαñ╕αÑìαñƒ αñòαÑï αñ╕αÑüαñ░αñòαÑìαñ╖αñ┐αññ αñ░αñûαÑçαñé" : "Handle e-waste safely"}</h2><p>{hindi ? "αñ╕αñ╣αÑÇ αñ¡αñ╛αñ╡ αñ£αñ╛αñ¿αÑçαñé αñöαñ░ αñ╣αñ░ handover αñòαñ╛ αñ░αñ┐αñòαÑëαñ░αÑìαñí αñ░αñûαÑçαñéαÑñ" : "Know the fair value and keep a traceable handover record."}</p></div><div className="hero-symbol"><ShieldAlert size={40}/></div></div>
++    <div className="safety-grid">
++      <div className="panel">
++        <div className="panel-title"><div><h3>{hindi ? "αñ»αñ╣ αñòαñ░αÑçαñé" : "Safe handling"}</h3><p>{hindi ? "αñ╕αñ╛αñ«αñùαÑìαñ░αÑÇ αñòαñ╛ αñöαñ¬αñÜαñ╛αñ░αñ┐αñò αñ░αñ┐αñòαÑëαñ░αÑìαñí αñ¼αñ¿αñ╛αñÅαÑñ" : "Build a formal record of the material."}</p></div><ShieldCheck size={20}/></div>
++        <div className="safety-list">{dos.map(({icon:Icon,text}) => <div className="safety-item do" key={text}><Icon size={16}/><span>{text}</span></div>)}</div>
++      </div>
++      <div className="panel">
++        <div className="panel-title"><div><h3>{hindi ? "αñ»αñ╣ αñòαñ¡αÑÇ αñ¿ αñòαñ░αÑçαñé" : "Never do"}</h3><p>{hindi ? "αñ£αñ╣αñ░αÑÇαñ▓αÑÇ αñ¬αÑìαñ░αñòαÑìαñ░αñ┐αñ»αñ╛ αñ╕αÑç αñ¼αñÜαÑçαñéαÑñ" : "Avoid toxic processes."}</p></div><Flame size={20}/></div>
++        <div className="safety-list">{donts.map(({icon:Icon,text}) => <div className="safety-item dont" key={text}><Icon size={16}/><span>{text}</span></div>)}</div>
++      </div>
++    </div>
++    <div className="safety-grid">
++      <div className="panel">
++        <div className="panel-title"><div><h3>{hindi ? "αñ¼αÑêαñƒαñ░αÑÇ αñ╡αñ┐αñ╢αÑçαñ╖ αñªαÑçαñûαñ¡αñ╛αñ▓" : "Battery special care"}</h3><p>{hindi ? "αñ▓αñ┐αñÑαñ┐αñ»αñ« αñ¼αÑêαñƒαñ░αÑÇ αñåαñù αñòαñ╛ αñ£αÑïαñûαñ┐αñ«αÑñ" : "Lithium batteries are a fire risk."}</p></div><Battery size={20}/></div>
++        <div className="safety-list">
++          <div className="safety-item do"><Battery size={16}/><span>{hindi ? "αñ¼αÑêαñƒαñ░αÑÇ αñ╕αñ╛αñ╡αñºαñ╛αñ¿αÑÇ αñ╕αÑç αñ╕αÑìαñƒαÑïαñ░ αñòαñ░αÑçαñé αñöαñ░ αñºαñ╛αññαÑü αñ╕αñéαñ¬αñ░αÑìαñò αñ╕αÑç αñªαÑéαñ░ αñ░αñûαÑçαñéαÑñ" : "Store batteries with care and away from metal contacts."}</span></div>
++          <div className="safety-item dont"><FlaskConical size={16}/><span>{hindi ? "αñ½αÑéαñ▓αÑÇ αñ»αñ╛ αñ░αñ┐αñ╕ αñ░αñ╣αÑÇ αñ¼αÑêαñƒαñ░αÑÇ αñòαÑï αñ¿ αñ¢αÑçαñªαÑçαñé; αñ╡αñ┐αñ╢αÑçαñ╖ αñ╕αñéαñ¡αñ╛αñ▓ αñòαÑÇ αñ£αñ░αÑéαñ░αññ αñ╣αÑêαÑñ" : "Swollen or leaking batteries demand special handling ΓÇö do not pierce them."}</span></div>
++        </div>
++      </div>
++      <div className="panel">
++        <div className="panel-title"><div><h3>{hindi ? "αñàαñùαñ▓αñ╛ αñòαñªαñ«" : "Next step"}</h3><p>{hindi ? "αñ╕αÑüαñ░αñòαÑìαñ╖αñ┐αññ αñ╣αÑêαñéαñíαñôαñ╡αñ░ αñÉαñ¬ αñ╕αÑç αñòαñ░αÑçαñéαÑñ" : "Do the safe handover in the app."}</p></div><Recycle size={20}/></div>
++        <div className="safety-list">
++          <div className="safety-item do"><Hand size={16}/><span>{hindi ? "αñ╕αÑìαñòαÑêαñ¿ αñ¬αÑçαñ£ αñ╕αÑç αñíαñ┐αñ£αñ┐αñƒαñ▓ αñ▓αÑëαñƒ αñ¼αñ¿αñ╛αñÅαñéαÑñ" : "Create a digital lot from the Scan page."}</span></div>
++          <div className="safety-item do"><Recycle size={16}/><span>{hindi ? "αñ╕αññαÑìαñ»αñ╛αñ¬αñ┐αññ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñûαÑïαñ£αñ¿αÑç αñòαÑç αñ▓αñ┐αñÅ αñ░αÑÇαñ╕αñ╛αñçαñòαñ▓αñ░ αñ¬αÑçαñ£ αñûαÑïαñ▓αÑçαñéαÑñ" : "Open the Recyclers page to find a verified recycler."}</span></div>
++          <button className="primary" onClick={() => setActive("scan")}><Camera size={16}/> {hindi ? "αñ¿αñ»αñ╛ αñ▓αÑëαñƒ αñ¼αñ¿αñ╛αñÅαñé" : "Create a new lot"}</button>
++        </div>
++      </div>
++    </div>
++    <SpokenButton text={spoken} hindi={hindi}/>
++  </section>;
++}
