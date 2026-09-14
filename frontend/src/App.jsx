@@ -121,6 +121,13 @@ export default function App() {
   const fileRef = useRef();
   const language = hindi ? copy.hi : copy.en;
 
+  // Unified recycler flag: explicit role OR profile ownership (registration
+  // yields CITIZEN/COLLECTOR, so profile-backed recyclers are detected via
+  // recyclerSummary.has_profile). Declared here — after recyclerSummary
+  // state, before any effect/nav that reads it — so `isRecycler` is always
+  // in scope (fixes "isRecycler is not defined" crash).
+  const isRecycler = isRecyclerRole || recyclerSummary?.has_profile === true;
+
   useEffect(() => {
     let mounted = true;
     materialService.getAll()
@@ -297,12 +304,12 @@ export default function App() {
           <nav>
             {(() => {
               const items = [["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert]];
-              if (isRecyclerRole || recyclerSummary?.has_profile === true) {
+              if (isRecycler) {
                 const idx = items.findIndex(i => i[0] === "earnings");
                 if (idx >= 0) items.splice(idx, 1);
                 items.push(["profile", ShieldCheck]);
               }
-              return items.map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={(isRecyclerRole || recyclerSummary?.has_profile === true) && id === "profile" ? (hindi ? "मेरी प्रोफ़ाइल" : "My Profile") : language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />);
+              return items.map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={isRecycler && id === "profile" ? (hindi ? "मेरी प्रोफ़ाइल" : "My Profile") : language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />);
             })()}
           </nav>
         </div>
@@ -317,7 +324,7 @@ export default function App() {
         <header className="topbar">
           <button className="menu-btn" onClick={() => setMobileMenu(true)}><Menu size={21} /></button>
           <div>
-            <div className="eyebrow">INDORE • COLLECTOR ACCOUNT</div>
+            <div className="eyebrow">INDORE • {isRecycler ? (hindi ? "रीसाइकलर खाता" : "RECYCLER ACCOUNT") : (hindi ? "कलेक्टर खाता" : "COLLECTOR ACCOUNT")}</div>
             <h1>{active === "home" ? `${language.greeting} 👋` : language.pageTitles[active]}</h1>
           </div>
           <div className="top-actions">
