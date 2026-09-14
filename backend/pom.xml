@@ -54,6 +54,12 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <!-- Actuator: health check endpoint for Railway -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Test: Standard dependencies for JUnit, Mockito, and Spring Boot testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

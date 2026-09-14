@@ -7,7 +7,7 @@ import {
   Languages, Menu, XCircle,
   Flame, FlaskConical, Monitor, TriangleAlert, Hand, PackageCheck, ShieldAlert, HeartPulse
 } from "lucide-react";
-import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService } from "./services/api";
+import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService, scanService } from "./services/api";
 import "./App.css";
 
 const MATERIAL_ICONS = {
@@ -93,6 +93,8 @@ export default function App() {
   const [recyclerStatus, setRecyclerStatus] = useState("loading");
   const [weight, setWeight] = useState("");
   const [photo, setPhoto] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [aiState, setAiState] = useState({ status: "idle", suggestion: "", message: "" });
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [hindi, setHindi] = useState(false);
@@ -182,8 +184,38 @@ export default function App() {
 
   const notify = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 4500); };
 
+  const onPhotoSelected = (file) => {
+    if (!file) return;
+    setPhotoFile(file);
+    setPhoto(URL.createObjectURL(file));
+    // AI suggests, collector confirms — never blocks manual selection.
+    setAiState({ status: "loading", suggestion: "", message: "" });
+    scanService.classify(file)
+      .then((data) => {
+        if (data?.matched && data.suggested_material_name) {
+          setMaterial(data.suggested_material_name);
+          setAiState({ status: "suggested", suggestion: data.suggested_material_name, message: "" });
+        } else {
+          setAiState({ status: "unmatched", suggestion: "", message: "" });
+        }
+      })
+      .catch((error) => {
+        const status = error?.response?.status;
+        const detail = error?.response?.data?.detail || error?.response?.data?.message || "";
+        setAiState({ status: "error", suggestion: "", message: detail, statusCode: status });
+      });
+  };
+
   const scanPhoto = () => {
-    notify(hindi ? "AI पहचान अभी उपलब्ध नहीं है। कृपया सामग्री चुनें।" : "AI classification is unavailable. Please select the material.");
+    if (!photoFile) {
+      notify(hindi ? "पहले फोटो लें, फिर सामग्री चुनें।" : "Capture a photo first, then choose the material.");
+      return;
+    }
+    if (aiState.status === "loading") {
+      notify(hindi ? "सामग्री पहचानी जा रही है..." : "Identifying material...");
+      return;
+    }
+    notify(hindi ? "सुझाई गई सामग्री की पुष्टि करें या नीचे कोई और चुनें।" : "Confirm the suggested material or choose a different one below.");
   };
 
   const createLot = async () => {
@@ -246,7 +278,7 @@ export default function App() {
         {notice && <div className="notice"><CheckCircle2 size={18} /><span>{notice}</span><button onClick={() => setNotice("")}><X size={16} /></button></div>}
 
         {active === "home" && <Dashboard summary={dashboardSummary} recentLots={recentLots} recentTransactions={recentTransactions} status={dashboardStatus} setActive={navigate} hindi={hindi} language={language} />}
-        {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} setPhoto={setPhoto} fileRef={fileRef} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus} />}
+        {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} fileRef={fileRef} onPhotoSelected={onPhotoSelected} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus} aiState={aiState} />}
         {active === "prices" && <Prices hindi={hindi} materials={materials} priceRecords={priceRecords} priceStatus={priceStatus} />}
         {active === "recyclers" && <Recyclers material={material} matches={recyclerMatches} status={recyclerStatus} hindi={hindi} />}
         {active === "lots" && <Lots lots={lots} status={lotStatus} setActive={navigate} hindi={hindi} refreshLots={refreshLots} />}
@@ -319,7 +351,7 @@ function Dashboard({ summary, recentLots, recentTransactions, status, setActive,
   </section>;
 }
 
-function ScanPage({ materials, materialStatus, material, setMaterial, weight, setWeight, photo, setPhoto, fileRef, scanPhoto, createLot, hindi, priceRecords, priceStatus }) {
+function ScanPage({ materials, materialStatus, material, setMaterial, weight, setWeight, photo, fileRef, onPhotoSelected, scanPhoto, createLot, hindi, priceRecords, priceStatus, aiState }) {
   const selectedMaterial = materials.find(item => item.commonName === material);
   const summary = selectedMaterial ? priceSummary(priceRecords[selectedMaterial.id]) : null;
   const safetyText = hindi ? "सुरक्षित हैंडओवर के लिए सामग्री को न जलाएं और बैटरी को सावधानी से रखें।" : "Do not burn materials. Store batteries safely and use a verified process when available.";
@@ -336,11 +368,22 @@ function ScanPage({ materials, materialStatus, material, setMaterial, weight, se
       <div className="panel upload-panel">
         <div className="panel-title"><div><h3>1. {hindi ? "उपकरण की फोटो लें" : "Capture device"}</h3><p>{hindi ? "साधारण Android फोन पर भी काम करता है" : "Photo works on entry-level Android"}</p></div><Camera size={20} /></div>
         <div className={`dropzone ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { if (e.target.files?.[0]) setPhoto(URL.createObjectURL(e.target.files[0])); }} />
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { onPhotoSelected(e.target.files?.[0]); e.target.value = ""; }} />
           {photo ? <><img src={photo} className="preview" alt="Uploaded electronic device" /><span className="photo-label">{hindi ? "फोटो तैयार" : "Photo ready"}</span></> : <><div className="upload-icon"><Camera size={28} /></div><b>{hindi ? "फोटो अपलोड / कैमरा खोलें" : "Upload / capture photo"}</b><span>JPG or PNG • {hindi ? "कहीं भी टैप करें" : "tap anywhere"}</span></>}
         </div>
-        <button className="outline wide" onClick={scanPhoto}><ScanLine size={18} /> {hindi ? "सामग्री चुनें" : "Choose material"}</button>
-        <div className="demo-note"><CircleAlert size={15} /><span>{hindi ? "AI पहचान अभी उपलब्ध नहीं है।" : "AI classification is not available yet. Select the material yourself."}</span></div>
+        <button className="outline wide" onClick={scanPhoto} disabled={aiState?.status === "loading"}><ScanLine size={18} /> {hindi ? "सामग्री चुनें" : "Choose material"}</button>
+        <div className="demo-note"><CircleAlert size={15} /><span>{
+          aiState?.status === "loading"
+            ? (hindi ? "सामग्री पहचानी जा रही है..." : "Identifying material...")
+            : aiState?.status === "suggested"
+              ? (hindi ? `AI सुझाव: ${aiState.suggestion} — पुष्टि करें या नीचे कोई और चुनें।` : `AI suggested: ${aiState.suggestion} — tap to confirm or choose a different one below.`)
+              : aiState?.status === "unmatched"
+                ? (hindi ? "अपने आप पहचान नहीं हो सकी — कृपया सामग्री चुनें।" : "Couldn't identify automatically — please select the material.")
+                : aiState?.status === "error"
+                  ? (hindi ? "पहचान उपलब्ध नहीं है — कृपया सामग्री खुद चुनें।" : "Identification unavailable — please select the material manually.")
+                  : (hindi ? "फोटो लेते ही AI सामग्री सुझाएगा।" : "AI will suggest a material as soon as you add a photo.")
+        }</span></div>
+        {aiState?.status === "suggested" && <div className="demo-note"><ShieldCheck size={15} /><span>{hindi ? "AI सुझाव" : "AI suggested"}</span></div>}
       </div>
 
       <div className="panel">

@@ -148,4 +148,18 @@ export const dashboardService = {
     },
 };
 
+export const scanService = {
+    // AI suggests, collector confirms. Throws on failure — caller falls
+    // back to manual material selection (never blocks lot creation).
+    classify: async (file) => {
+        const form = new FormData();
+        form.append('image', file);
+        const response = await api.post('/scan/classify', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000,
+        });
+        return response.data;
+    },
+};
+
 export default api;
