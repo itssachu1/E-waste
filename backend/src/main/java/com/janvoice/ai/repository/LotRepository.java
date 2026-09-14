@@ -18,6 +18,13 @@ public interface LotRepository extends JpaRepository<Lot, Long> {
     // Lots matched to a recycler profile (recycler handover inbox).
     List<Lot> findByRecycler_CreatedByOrderByCreatedAtDesc(Long createdBy);
 
+    // Recycler-scoped aggregate counts (for recycler dashboard).
+    @Query("SELECT COUNT(l) FROM Lot l WHERE l.recycler.id = :recyclerId AND l.status IN :statuses")
+    long countByRecyclerIdAndStatusIn(@Param("recyclerId") Long recyclerId, @Param("statuses") Collection<Lot.Status> statuses);
+
+    @Query("SELECT COUNT(l) FROM Lot l WHERE l.recycler.id = :recyclerId AND l.status = :status")
+    long countByRecyclerIdAndStatus(@Param("recyclerId") Long recyclerId, @Param("status") Lot.Status status);
+
     long countByCollector(User collector);
 
     // Aggregate count over a bounded status set (uses idx_lots_collector / idx_lots_status).

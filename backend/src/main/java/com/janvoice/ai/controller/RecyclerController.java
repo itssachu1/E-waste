@@ -34,6 +34,12 @@ public class RecyclerController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getOne(@PathVariable Long id) { return ResponseEntity.ok(service.findById(id)); }
 
+    /** Return the recycler profile owned by the currently authenticated user. */
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> me(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        return ResponseEntity.ok(service.findByUser(tokens.authenticate(authorization).getId()));
+    }
+
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody RecyclerRequest request, @RequestHeader(value = "Authorization", required = false) String authorization) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, tokens.authenticate(authorization)));

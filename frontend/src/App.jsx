@@ -4,12 +4,13 @@ import {
   ArrowRight, CheckCircle2, ShieldCheck, TrendingUp, QrCode,
   Search, X, Leaf, Smartphone, Laptop, Battery, Cable, CircuitBoard,
   ChevronRight, Clock3, Truck, CircleAlert, ScanLine, Banknote,
-  Languages, Menu, XCircle,
+  Languages, Menu, XCircle, LogOut,
   Flame, FlaskConical, Monitor, TriangleAlert, Hand, PackageCheck, ShieldAlert, HeartPulse
 } from "lucide-react";
-import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService, scanService } from "./services/api";
+import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService, scanService, recyclerProfileService } from "./services/api";
 import { AuthContext } from "./context/AuthContext";
 import LoginPortal from "./views/LoginPortal";
+import RecyclerProfile from "./views/RecyclerProfile";
 import "./App.css";
 
 const MATERIAL_ICONS = {
@@ -82,6 +83,11 @@ export default function App() {
     return <LoginPortal />;
   }
 
+  // Role detection from stored user
+  const role = user?.role || "";
+  const isRecycler = role === "RECYCLER" || role === "VERIFIED_RECYCLER";
+  const isCollector = role === "COLLECTOR" || role === "CITIZEN";
+
   const [active, setActive] = useState("home");
   const [lots, setLots] = useState([]);
   const [lotStatus, setLotStatus] = useState("loading");
@@ -107,6 +113,8 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [hindi, setHindi] = useState(false);
+  const [recyclerProfile, setRecyclerProfile] = useState(null);
+  const [recyclerProfileStatus, setRecyclerProfileStatus] = useState("loading");
   const fileRef = useRef();
   const language = hindi ? copy.hi : copy.en;
 
@@ -191,6 +199,17 @@ export default function App() {
     return () => { mounted = false; };
   }, []);
 
+  // Load recycler profile for recycler-role users
+  useEffect(() => {
+    if (!isRecycler) { setRecyclerProfileStatus("ready"); return; }
+    let mounted = true;
+    setRecyclerProfileStatus("loading");
+    recyclerProfileService.me()
+      .then(data => { if (mounted) { setRecyclerProfile(data); setRecyclerProfileStatus("ready"); } })
+      .catch(() => { if (mounted) setRecyclerProfileStatus("error"); });
+    return () => { mounted = false; };
+  }, [isRecycler]);
+
   const notify = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 4500); };
 
   const onPhotoSelected = (file) => {
@@ -261,7 +280,15 @@ export default function App() {
             <button className="mobile-close" onClick={() => setMobileMenu(false)}><X size={18} /></button>
           </div>
           <nav>
-            {[["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert]].map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />)}
+            {(() => {
+              const items = [["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert]];
+              if (isRecycler) {
+                const idx = items.findIndex(i => i[0] === "earnings");
+                if (idx >= 0) items.splice(idx, 1);
+                items.push(["profile", ShieldCheck]);
+              }
+              return items.map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={isRecycler && id === "profile" ? (hindi ? "मेरी प्रोफ़ाइल" : "My Profile") : language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />);
+            })()}
           </nav>
         </div>
         <div className="trust-card">
@@ -280,13 +307,14 @@ export default function App() {
           </div>
           <div className="top-actions">
             <button className="lang-btn" onClick={() => setHindi(v => !v)}><Languages size={16} /> {hindi ? "EN" : "हिंदी"}</button>
+            <button className="logout-btn" onClick={logout} title={hindi ? "लॉग आउट" : "Logout"}><LogOut size={16} /></button>
             <div className="profile">SN</div>
           </div>
         </header>
 
         {notice && <div className="notice"><CheckCircle2 size={18} /><span>{notice}</span><button onClick={() => setNotice("")}><X size={16} /></button></div>}
 
-        {active === "home" && <Dashboard summary={dashboardSummary} recentLots={recentLots} recentTransactions={recentTransactions} status={dashboardStatus} setActive={navigate} hindi={hindi} language={language} />}
+        {active === "home" && <Dashboard summary={dashboardSummary} recyclerSummary={recyclerSummary} recentLots={recentLots} recentTransactions={recentTransactions} status={dashboardStatus} recyclerStatus={recyclerProfileStatus} setActive={navigate} hindi={hindi} language={language} />}
         {active === "scan" && <ScanPage materials={materials} materialStatus={materialStatus} material={material} setMaterial={setMaterial} weight={weight} setWeight={setWeight} photo={photo} fileRef={fileRef} onPhotoSelected={onPhotoSelected} scanPhoto={scanPhoto} createLot={createLot} hindi={hindi} priceRecords={priceRecords} priceStatus={priceStatus} aiState={aiState} />}
         {active === "prices" && <Prices hindi={hindi} materials={materials} priceRecords={priceRecords} priceStatus={priceStatus} />}
         {active === "recyclers" && <Recyclers material={material} matches={recyclerMatches} status={recyclerStatus} hindi={hindi} />}
@@ -294,6 +322,7 @@ export default function App() {
         {active === "transactions" && <Transactions lots={lots} transactions={transactions} status={transactionStatus} refreshLedger={refreshLedger} hindi={hindi} />}
         {active === "earnings" && <Earnings earnings={earnings} status={earningsStatus} transactions={transactions} hindi={hindi} />}
         {active === "safety" && <Safety hindi={hindi} setActive={navigate} />}
+        {active === "profile" && <RecyclerProfile profile={recyclerProfile} status={recyclerProfileStatus} hindi={hindi} />}
       </main>
 
       <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19} /> {hindi ? "स्कैन" : "Scan"}</button>
@@ -305,7 +334,44 @@ function Nav({ active, id, label, icon, setActive }) {
   return <button className={active === id ? "nav active" : "nav"} onClick={() => setActive(id)}>{icon}<span>{label}</span>{active === id && <ChevronRight size={15} />}</button>;
 }
 
-function Dashboard({ summary, recentLots, recentTransactions, status, setActive, hindi, language }) {
+function Dashboard({ summary, recyclerSummary, status, recyclerStatus, setActive, hindi, language }) {
+  // Detect role from stored user (same pattern as Lots component)
+  let userRole = "";
+  try { userRole = JSON.parse(localStorage.getItem("janvoice_user") || "{}").role || ""; } catch {}
+  const isRecycler = userRole === "RECYCLER" || userRole === "VERIFIED_RECYCLER";
+
+  if (isRecycler) {
+    if (recyclerStatus === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "डैशबोर्ड लोड हो रहा है..." : "Loading dashboard..."}</span></div></section>;
+    if (recyclerStatus === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23} /><span>{hindi ? "डैशबोर्ड लोड नहीं हो सका।" : "Unable to load dashboard."}</span></div></section>;
+    const incoming = Number(recyclerSummary?.incoming_lots_count || 0);
+    const awaiting = Number(recyclerSummary?.awaiting_confirmation_count || 0);
+    const confirmed = Number(recyclerSummary?.confirmed_lots_count || 0);
+    const volume = Number(recyclerSummary?.total_volume_kg || 0);
+    const pendingPayments = Number(recyclerSummary?.pending_payments_count || 0);
+    const hasProfile = recyclerSummary?.has_profile !== false;
+    return <section className="content">
+      <div className="hero-card dashboard-hero">
+        <div className="hero-copy"><span className="pill">RECYCLER DASHBOARD</span><h2>{hindi ? "आपकी रीसाइकलर गतिविधि" : "Your recycler activity"}</h2>
+          {!hasProfile && <p style={{color:"#c2410c"}}>{hindi ? "आपकी प्रोफ़ाइल पूरी नहीं है।" : "Your recycler profile is not set up yet."}</p>}
+        </div>
+      </div>
+      <div className="stats six">
+        <Stat label={hindi ? "आने वाले लॉट" : "Incoming lots"} value={incoming} icon={<Package />} />
+        <Stat label={hindi ? "पुष्टि की प्रतीक्षा" : "Awaiting confirmation"} value={awaiting} icon={<Clock3 />} />
+        <Stat label={hindi ? "पुष्टि किए गए" : "Confirmed"} value={confirmed} icon={<ShieldCheck />} />
+        <Stat label={hindi ? "कुल वजन (kg)" : "Total volume (kg)"} value={volume.toFixed(1)} icon={<Recycle />} />
+        <Stat label={hindi ? "लंबित भुगतान" : "Pending payments"} value={pendingPayments} icon={<Banknote />} />
+      </div>
+      <div className="panel">
+        <div className="section-head"><div><h3>{hindi ? "त्वरित कार्य" : "Quick actions"}</h3></div></div>
+        <Action onClick={() => setActive("lots")} icon={<Package />} title={hindi ? "आने वाले लॉट देखें" : "View incoming lots"} text={hindi ? "हैंडओवर की पुष्टि करें" : "Confirm handovers"} />
+        <Action onClick={() => setActive("transactions")} icon={<Banknote />} title={hindi ? "भुगतान का रिकॉर्ड" : "Payment records"} text={hindi ? "लंबित भुगतान देखें" : "View pending payments"} />
+        <Action onClick={() => setActive("profile")} icon={<ShieldCheck />} title={hindi ? "मेरी प्रोफ़ाइल" : "My profile"} text={hindi ? "विवरण देखें" : "View your details"} />
+      </div>
+    </section>;
+  }
+
+  // Collector dashboard (unchanged)
   if (status === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "डैशबोर्ड लोड हो रहा है..." : "Loading dashboard..."}</span></div></section>;
   if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23} /><span>{hindi ? "डैशबोर्ड लोड नहीं हो सका। कृपया फिर कोशिश करें।" : "Unable to load dashboard. Please try again."}</span></div></section>;
   const total = Number(summary?.total_earnings || 0);
@@ -454,7 +520,7 @@ function Lots({ lots, status, setActive, hindi, refreshLots }) {
   const confirmReceipt = async lot => { setBusyId(lot.id); try { await lotService.confirmHandover(lot.id, finalWeight ? Number(finalWeight) : null); setFinalWeight(""); await refreshLots(); } finally { setBusyId(null); } };
   if (status === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "आपके लॉट लोड हो रहे हैं..." : "Loading your lots..."}</span></div></section>;
   if (status === "error") return <section className="content"><div className="empty panel"><CircleAlert size={23} /><span>{hindi ? "लॉट लोड नहीं हो सके। कृपया फिर कोशिश करें।" : "Unable to load lots. Please try again."}</span></div></section>;
-  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">{hindi ? "ट्रेसबिलिटी" : "TRACEABILITY"}</span><h2>{hindi ? "डिजिटल लॉट इतिहास" : "Digital lot history"}</h2><p>{hindi ? "हर लॉट का वास्तविक रिकॉर्ड यहां दिखता है।" : "Your server-backed digital lot records appear here."}</p></div><QrCode className="qr" size={27} /></div>{lots.length === 0 ? <div className="empty"><Package size={23} /><span>{hindi ? "अभी कोई लॉट नहीं बना। अपना पहला डिजिटल लॉट बनाएं।" : "No lots created yet. Create your first digital lot."}</span></div> : <div className="timeline">{lots.map(l => { const spoken = `Lot ${l.lot_reference}, ${l.material_name}, ${l.approximate_weight} kilograms, ${l.status}.`; const handedAt = formatTime(l.handed_over_at); const confirmedAt = formatTime(l.recycler_confirmed_at); return <div className="lot-card" key={l.id}><div className="lot-main"><div className="lot-icon"><Package size={20} /></div><div><b>{l.lot_reference}</b><span>{l.material_name} • {l.approximate_weight} kg • {new Date(l.created_at).toLocaleString("en-IN")}</span><small><MapPin size={12} /> {l.recycler_id ? `Recycler #${l.recycler_id}` : (hindi ? "रीसाइकलर चयनित नहीं" : "Recycler not selected")}</small></div></div><div className="lot-actions"><strong>{lotValue(l)}</strong><span className="status">{statusText(l.status)}</span>{handedAt && <small className="handover-time"><Truck size={12} /> {hindi ? "हैंडओवर" : "Handover"}: {handedAt}</small>}{confirmedAt && <small className="handover-time"><CheckCircle2 size={12} /> {hindi ? "पुष्टि" : "Confirmed"}: {confirmedAt}</small>}{isCollector && l.status === "READY_FOR_HANDOVER" && <button className="outline tiny handover-btn" type="button" disabled={busyId === l.id} onClick={() => markHandedOver(l)}><Truck size={14} /> {hindi ? "हैंडओवर करें" : "Mark handed over"}</button>}{isRecycler && l.status === "HANDED_OVER" && <div className="handover-confirm"><input type="number" min="0.01" step="0.01" value={finalWeight} placeholder={hindi ? "वजन (किलो)" : "final kg"} onChange={event => setFinalWeight(event.target.value)} /><button className="outline tiny handover-btn" type="button" disabled={busyId === l.id} onClick={() => confirmReceipt(l)}><CheckCircle2 size={14} /> {hindi ? "रसीद पुष्टि" : "Confirm receipt"}</button></div>}<SpokenButton text={spoken} hindi={hindi} /></div></div>; })}</div>}<button className="primary" onClick={() => setActive("scan")}><Package size={17} /> {hindi ? "नया लॉट बनाएं" : "Create a new lot"}</button></div></section>;
+  return <section className="content"><div className="panel"><div className="section-head"><div><span className="pill">{hindi ? "ट्रेसबिलिटी" : "TRACEABILITY"}</span><h2>{hindi ? "डिजिटल लॉट इतिहास" : "Digital lot history"}</h2><p>{hindi ? "हर लॉट का वास्तविक रिकॉर्ड यहां दिखता है।" : "Your server-backed digital lot records appear here."}</p></div><QrCode className="qr" size={27} /></div>{lots.length === 0 ? <div className="empty"><Package size={23} /><span>{hindi ? "अभी कोई लॉट नहीं बना। अपना पहला डिजिटल लॉट बनाएं।" : "No lots created yet. Create your first digital lot."}</span></div> : <div className="timeline">{lots.map(l => { const spoken = `Lot ${l.lot_reference}, ${l.material_name}, ${l.approximate_weight} kilograms, ${l.status}.`; const handedAt = formatTime(l.handed_over_at); const confirmedAt = formatTime(l.recycler_confirmed_at); return <div className="lot-card" key={l.id}><div className="lot-main"><div className="lot-icon"><Package size={20} /></div><div><b>{l.lot_reference}</b><span>{l.material_name} • {l.approximate_weight} kg • {new Date(l.created_at).toLocaleString("en-IN")}</span><small><MapPin size={12} /> {l.recycler_id ? `Recycler #${l.recycler_id}` : (hindi ? "रीसाइकलर चयनित नहीं" : "Recycler not selected")}</small></div></div><div className="lot-actions"><strong>{lotValue(l)}</strong><span className="status">{statusText(l.status)}</span>{handedAt && <small className="handover-time"><Truck size={12} /> {hindi ? "हैंडओवर" : "Handover"}: {handedAt}</small>}{confirmedAt && <small className="handover-time"><CheckCircle2 size={12} /> {hindi ? "पुष्टि" : "Confirmed"}: {confirmedAt}</small>}{isCollector && l.status === "READY_FOR_HANDOVER" && <button className="outline tiny handover-btn" type="button" disabled={busyId === l.id} onClick={() => markHandedOver(l)}><Truck size={14} /> {hindi ? "हैंडओवर करें" : "Mark handed over"}</button>}{isRecycler && l.status === "HANDED_OVER" && <div className="handover-confirm"><span className="pending-label">{hindi ? "पुष्टि की प्रतीक्षा" : "Awaiting your confirmation"}</span><input type="number" min="0.01" step="0.01" value={finalWeight} placeholder={hindi ? "वजन (किलो)" : "final kg"} onChange={event => setFinalWeight(event.target.value)} /><button className="outline tiny handover-btn" type="button" disabled={busyId === l.id} onClick={() => confirmReceipt(l)}><CheckCircle2 size={14} /> {hindi ? "रसीद पुष्टि" : "Confirm receipt"}</button></div>}<SpokenButton text={spoken} hindi={hindi} /></div></div>; })}</div>}<button className="primary" onClick={() => setActive("scan")}><Package size={17} /> {hindi ? "नया लॉट बनाएं" : "Create a new lot"}</button></div></section>;
 }
 
 function Transactions({ lots, transactions, status, refreshLedger, hindi }) {

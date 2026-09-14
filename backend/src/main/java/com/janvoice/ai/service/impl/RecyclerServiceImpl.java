@@ -48,6 +48,16 @@ public class RecyclerServiceImpl implements RecyclerService {
 
     @Override
     @Transactional
+    public Map<String, Object> findByUser(Long userId) {
+        return repository.findAll().stream()
+                .filter(r -> r.getCreatedBy() != null && r.getCreatedBy().equals(userId))
+                .findFirst()
+                .map(this::response)
+                .orElseThrow(() -> notFound("No recycler profile found for this user"));
+    }
+
+    @Override
+    @Transactional
     public List<Map<String, Object>> match(Long materialId, String location) {
         if (materialId == null) throw bad("material_id is required");
         String search = location == null ? "" : location.trim().toLowerCase(Locale.ROOT);

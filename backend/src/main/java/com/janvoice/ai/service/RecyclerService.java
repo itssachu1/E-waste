@@ -10,6 +10,7 @@ import java.util.Map;
 public interface RecyclerService {
     List<Map<String, Object>> find(Long materialId, String city, Recycler.AuthorizationStatus status, Boolean active);
     Map<String, Object> findById(Long id);
+    Map<String, Object> findByUser(Long userId);
     List<Map<String, Object>> match(Long materialId, String location);
     Map<String, Object> create(RecyclerRequest request, User actor);
     Map<String, Object> update(Long id, RecyclerRequest request, User actor);

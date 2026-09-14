@@ -155,12 +155,25 @@ export const dashboardService = {
         const response = await api.get('/dashboard/summary');
         return response.data;
     },
+    // Recycler-specific stats: incoming lots, confirmations pending, volume received.
+    recyclerSummary: async () => {
+        const response = await api.get('/dashboard/recycler-summary');
+        return response.data;
+    },
     recentLots: async (limit = 5) => {
         const response = await api.get('/dashboard/recent-lots', { params: { limit } });
         return response.data;
     },
     recentTransactions: async (limit = 5) => {
         const response = await api.get('/dashboard/recent-transactions', { params: { limit } });
+        return response.data;
+    },
+};
+
+export const recyclerProfileService = {
+    // Get the recycler profile owned by the currently authenticated user.
+    me: async () => {
+        const response = await api.get('/recyclers/me');
         return response.data;
     },
 };

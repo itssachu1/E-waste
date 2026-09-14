@@ -118,3 +118,25 @@ html{
   -webkit-text-size-adjust:100%;
   text-size-adjust:100%;
 }
+
+/* Logout button in topbar */
+.logout-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:38px;height:38px;border-radius:11px;border:0;cursor:pointer;
+  background:#fff;color:#6b756e;transition:.18s;
+}
+.logout-btn:hover{background:#fdf1ef;color:#c2410c}
+
+/* Recycler profile */
+.profile-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+.profile-field{display:flex;flex-direction:column;gap:3px}
+.profile-field label{font-size:10px;color:#7b887f;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.profile-field strong{font-size:14px;color:#17211b}
+.profile-field span{font-size:13px;color:#3c4a41}
+.material-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.material-tag{padding:6px 12px;background:#eaf7ee;color:#168448;border-radius:8px;font-size:11px;font-weight:600}
+.badge-verified,.badge-pending,.badge-rejected{padding:5px 12px;border-radius:8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.badge-verified{background:#dcfce7;color:#166534}
+.badge-pending{background:#fef3c7;color:#92400e}
+.badge-rejected{background:#fee2e2;color:#991b1b}
+.pending-label{display:block;margin-bottom:8px;padding:6px 12px;background:#fef3c7;color:#92400e;border-radius:8px;font-size:11px;font-weight:700}

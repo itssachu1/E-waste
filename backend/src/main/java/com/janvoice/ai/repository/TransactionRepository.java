@@ -17,6 +17,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     boolean existsByLot_IdAndPaymentStatus(Long lotId, Transaction.PaymentStatus status);
     long countByCollectorAndPaymentStatus(User collector, Transaction.PaymentStatus status);
 
+    // Recycler-scoped aggregates (for recycler dashboard).
+    @Query("SELECT COALESCE(SUM(COALESCE(t.lot.finalWeight, t.lot.approximateWeight)), 0) FROM Transaction t WHERE t.lot.recycler.id = :recyclerId")
+    BigDecimal sumWeightByRecyclerId(@Param("recyclerId") Long recyclerId);
+
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.lot.recycler.id = :recyclerId AND t.paymentStatus = :status")
+    long countByRecyclerIdAndStatus(@Param("recyclerId") Long recyclerId, @Param("status") Transaction.PaymentStatus status);
+
     // Bulk aggregates computed in the database (uses idx_transactions_collector /
     // idx_transactions_payment_status) — never loaded into memory.
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.collector = :collector AND t.paymentStatus = :status")
