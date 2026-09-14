@@ -2,9 +2,13 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { authService } from '../services/api';
 import {
-    Building, User, Lock, Eye, EyeOff, MapPin, LogIn,
-    MessageSquare, ShieldCheck, Heart, UserPlus, BarChart3, Users
+    Recycle, User, Lock, Eye, EyeOff, MapPin, LogIn,
+    Camera, IndianRupee, ShieldCheck, Heart, UserPlus, Package, Truck
 } from 'lucide-react';
+
+const COLLECTOR = 'COLLECTOR';
+const RECYCLER = 'RECYCLER';
+const DEFAULT_LOCATION = 'Indore';
 
 /**
  * Rebuilt LoginPortal to match the provided mockup with 95%+ precision.
@@ -14,46 +18,33 @@ import {
 export default function LoginPortal() {
     const { login } = useContext(AuthContext);
     const [isRegister, setIsRegister] = useState(false);
-    const [role, setRole] = useState('CITIZEN'); // CITIZEN or MP
+    const [role, setRole] = useState(COLLECTOR);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [wardArea, setWardArea] = useState('Ward 5');
+    const [location, setLocation] = useState(DEFAULT_LOCATION);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Demo-mode login for hackathon demos when backend auth is unavailable
     const handleDemoLogin = (type) => {
         setError('');
         setSuccess('');
         setIsRegister(false);
-
-        if (type === 'CITIZEN') {
-            setRole('CITIZEN');
-            setUsername('citizen-demo');
+        if (type === RECYCLER) {
+            setRole(RECYCLER);
+            setUsername('recycler-demo');
             setPassword('');
-            setWardArea('Ward 5');
-            login({
-                id: 1001,
-                username: 'citizen-demo',
-                role: 'CITIZEN',
-                wardArea: 'Ward 5',
-                demoMode: true,
-            });
-            setSuccess('Demo Mode enabled. You are signed in as a citizen.');
+            setLocation(DEFAULT_LOCATION);
+            login({ id: 2001, username: 'recycler-demo', role: RECYCLER, wardArea: DEFAULT_LOCATION, demoMode: true });
+            setSuccess('Demo Mode enabled. You are signed in as a recycler.');
         } else {
-            setRole('MP');
-            setUsername('mp-demo');
+            setRole(COLLECTOR);
+            setUsername('collector-demo');
             setPassword('');
-            login({
-                id: 2001,
-                username: 'mp-demo',
-                role: 'MP',
-                wardArea: 'Ward 5',
-                demoMode: true,
-            });
-            setSuccess('Demo Mode enabled. You are signed in as an MP admin.');
+            setLocation(DEFAULT_LOCATION);
+            login({ id: 1001, username: 'collector-demo', role: COLLECTOR, wardArea: DEFAULT_LOCATION, demoMode: true });
+            setSuccess('Demo Mode enabled. You are signed in as a collector.');
         }
     };
 
@@ -63,24 +54,29 @@ export default function LoginPortal() {
         setError('');
         setSuccess('');
 
-        if (!username.trim() || !password.trim()) {
+        const cleanUsername = username.trim();
+        const cleanLocation = location.trim() || DEFAULT_LOCATION;
+        if (!cleanUsername || !password) {
             setError('Please enter both username and password.');
+            return;
+        }
+        if (cleanUsername.length > 50) {
+            setError('Username must be 50 characters or fewer.');
+            return;
+        }
+        if (password.length < 4) {
+            setError('Password must be at least 4 characters.');
             return;
         }
 
         setLoading(true);
         try {
             if (isRegister) {
-                await authService.register(
-                    username,
-                    password,
-                    role,
-                    role === 'CITIZEN' ? wardArea : null
-                );
-                setSuccess('Registration successful! Please login.');
+                await authService.register(cleanUsername, password, role, cleanLocation);
+                setSuccess('Registration successful! Please sign in.');
                 setIsRegister(false);
             } else {
-                const data = await authService.login(username, password);
+                const data = await authService.login(cleanUsername, password);
                 login(data);
             }
         } catch (err) {
@@ -97,41 +93,47 @@ export default function LoginPortal() {
             <header className="w-full bg-white border-b border-slate-100 px-8 py-3.5 flex flex-row justify-between items-center sm:px-12">
                 {/* Brand Logo */}
                 <div className="flex items-center gap-3">
-                    <div className="text-emerald-700">
-                        <Building className="w-9 h-9" />
+                    <div className="text-emerald-700" aria-hidden="true">
+                        <Recycle className="w-9 h-9" />
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xl font-extrabold text-slate-900 tracking-tight leading-6">
-                            JanVoice AI
+                            E-Waste Saathi
                         </span>
                         <span className="text-[11px] font-bold text-emerald-650 tracking-wider">
-                            Code for Communities
+                            Scan &bull; Price &bull; Recycle
                         </span>
                     </div>
                 </div>
 
                 {/* Header Tabs */}
-                <div className="flex gap-8 h-10 items-center">
+                <div className="flex gap-8 h-10 items-center" role="tablist" aria-label="Choose account type">
                     <button
-                        onClick={() => setRole('CITIZEN')}
-                        className={`flex items-center gap-2 text-sm font-semibold tracking-wide transition-all h-full px-1 border-b-2 ${role === 'CITIZEN'
+                        type="button"
+                        role="tab"
+                        aria-selected={role === COLLECTOR}
+                        onClick={() => setRole(COLLECTOR)}
+                        className={`flex items-center gap-2 text-sm font-semibold tracking-wide transition-all h-full px-1 border-b-2 ${role === COLLECTOR
                                 ? 'border-emerald-700 text-emerald-800'
                                 : 'border-transparent text-slate-500 hover:text-slate-800'
                             }`}
                     >
-                        <User className="w-4 h-4" />
-                        Citizen Portal
+                        <User className="w-4 h-4" aria-hidden="true" />
+                        Collector Portal
                     </button>
 
                     <button
-                        onClick={() => setRole('MP')}
-                        className={`flex items-center gap-2 text-sm font-semibold tracking-wide transition-all h-full px-1 border-b-2 ${role === 'MP'
+                        type="button"
+                        role="tab"
+                        aria-selected={role === RECYCLER}
+                        onClick={() => setRole(RECYCLER)}
+                        className={`flex items-center gap-2 text-sm font-semibold tracking-wide transition-all h-full px-1 border-b-2 ${role === RECYCLER
                                 ? 'border-emerald-700 text-emerald-800'
                                 : 'border-transparent text-slate-500 hover:text-slate-800'
                             }`}
                     >
-                        <BarChart3 className="w-4 h-4" />
-                        MP Dashboard
+                        <Truck className="w-4 h-4" aria-hidden="true" />
+                        Recycler Portal
                     </button>
                 </div>
             </header>
@@ -147,11 +149,11 @@ export default function LoginPortal() {
 
                         <div className="space-y-4">
                             <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                                A Smarter Way to<br />
-                                Build <span className="text-emerald-700">Better Communities</span>
+                                Turn E-Waste<br />
+                                Into <span className="text-emerald-700">Traceable Value</span>
                             </h2>
                             <p className="text-slate-550 text-sm leading-relaxed max-w-md font-medium">
-                                Raise issues, track progress, and get things done with the power of AI.
+                                Identify electronic devices, check a fair price, hand over to a verified recycler and track your earnings.
                             </p>
                         </div>
 
@@ -159,49 +161,49 @@ export default function LoginPortal() {
                         <div className="space-y-6 max-w-md">
 
                             <div className="flex gap-4 items-start">
-                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0">
-                                    <MessageSquare className="w-5 h-5 fill-emerald-500/10" />
+                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0" aria-hidden="true">
+                                    <Camera className="w-5 h-5 fill-emerald-500/10" />
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-850">Smart Complaint Handling</h4>
+                                    <h4 className="text-sm font-bold text-slate-850">AI Device Identification</h4>
                                     <p className="text-xs text-slate-450 mt-0.5 leading-relaxed">
-                                        AI categorizes, deduplicates and prioritizes complaints automatically.
+                                        Scan a photo and get a material suggestion — you always confirm before creating a lot.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="flex gap-4 items-start">
-                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0">
-                                    <MapPin className="w-5 h-5 fill-emerald-500/10" />
+                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0" aria-hidden="true">
+                                    <IndianRupee className="w-5 h-5 fill-emerald-500/10" />
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-850">Location Based Reporting</h4>
+                                    <h4 className="text-sm font-bold text-slate-850">Fair-Price Reference</h4>
                                     <p className="text-xs text-slate-450 mt-0.5 leading-relaxed">
-                                        Pin the exact location and help local authorities act faster.
+                                        See today&apos;s verified rates per material before you hand over any lot.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="flex gap-4 items-start">
-                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0">
-                                    <Users className="w-5 h-5 fill-emerald-500/10" />
+                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0" aria-hidden="true">
+                                    <ShieldCheck className="w-5 h-5 fill-emerald-500/10" />
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-850">Community Driven</h4>
+                                    <h4 className="text-sm font-bold text-slate-850">Verified Recyclers Only</h4>
                                     <p className="text-xs text-slate-450 mt-0.5 leading-relaxed">
-                                        Upvote issues, support your neighbors and bring real change.
+                                        Hand over digital lots to authorized recyclers with a traceable record.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="flex gap-4 items-start">
-                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0">
-                                    <BarChart3 className="w-5 h-5 fill-emerald-500/10" />
+                                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center text-emerald-700 shadow-md shrink-0" aria-hidden="true">
+                                    <Package className="w-5 h-5 fill-emerald-500/10" />
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-850">MP Analytics Dashboard</h4>
+                                    <h4 className="text-sm font-bold text-slate-850">Digital Lots &amp; Earnings</h4>
                                     <p className="text-xs text-slate-450 mt-0.5 leading-relaxed">
-                                        Real-time insights to track issues, departments and area-wise progress.
+                                        Every handover and payment is recorded in your lots and earnings ledger.
                                     </p>
                                 </div>
                             </div>
@@ -213,12 +215,12 @@ export default function LoginPortal() {
                     <div className="mt-12 relative z-10 w-full max-w-sm">
                         <div className="bg-white/80 border border-white/50 backdrop-blur-xs px-6 py-3.5 rounded-2xl shadow-sm text-center">
                             <span className="text-[11px] text-slate-500 font-bold flex items-center justify-center gap-1.5">
-                                Built with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> for a better tomorrow
+                                Built with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" aria-hidden="true" /> for formal recycling
                             </span>
                             <div className="flex justify-center gap-4 text-[10.5px] font-black text-emerald-800/80 mt-1.5">
-                                <span>#JanVoiceAI</span>
-                                <span>#SmartGovernance</span>
-                                <span>#BetterIndia</span>
+                                <span>#EWasteSaathi</span>
+                                <span>#FormalRecycling</span>
+                                <span>#CircularEconomy</span>
                             </div>
                         </div>
                     </div>
@@ -274,29 +276,31 @@ export default function LoginPortal() {
 
                         {/* Round shield icon badge */}
                         <div className="flex justify-center mb-5">
-                            <div className="w-16 h-16 bg-[#e6f4ea] rounded-full flex items-center justify-center text-emerald-700 shadow-inner">
-                                <ShieldCheck className="w-8 h-8 stroke-[1.75]" />
+                            <div className="w-16 h-16 bg-[#e6f4ea] rounded-full flex items-center justify-center text-emerald-700 shadow-inner" aria-hidden="true">
+                                <Recycle className="w-8 h-8 stroke-[1.75]" />
                             </div>
                         </div>
 
                         {/* Typography Header */}
                         <div className="text-center mb-6">
                             <h3 className="text-2xl font-black text-slate-805 tracking-tight">
-                                {isRegister ? 'Welcome!' : 'Welcome Back!'}
+                                {isRegister ? 'Join E-Waste Saathi!' : 'Welcome Back!'}
                             </h3>
                             <p className="text-xs text-slate-450 font-bold mt-1">
-                                {isRegister ? 'Register your local citizen profile' : 'Sign in to your JanVoice AI account'}
+                                {isRegister
+                                    ? (role === RECYCLER ? 'Register your recycler account' : 'Register your collector account')
+                                    : 'Sign in to your E-Waste Saathi account'}
                             </p>
                         </div>
 
                         {/* Alerts */}
                         {error && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-800 text-xs font-semibold text-center">
+                            <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-800 text-xs font-semibold text-center">
                                 {error}
                             </div>
                         )}
                         {success && (
-                            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-xs font-semibold text-center">
+                            <div role="status" className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-xs font-semibold text-center">
                                 {success}
                             </div>
                         )}
@@ -306,13 +310,17 @@ export default function LoginPortal() {
 
                             {/* Username Input Field */}
                             <div>
-                                <label className="block text-slate-700 text-xs font-extrabold mb-1.5">Username</label>
+                                <label htmlFor="login-username" className="block text-slate-700 text-xs font-extrabold mb-1.5">Username</label>
                                 <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400" aria-hidden="true">
                                         <User className="w-4 h-4" />
                                     </span>
                                     <input
+                                        id="login-username"
+                                        name="username"
                                         type="text"
+                                        autoComplete="username"
+                                        maxLength={50}
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         placeholder="Enter your username"
@@ -323,13 +331,16 @@ export default function LoginPortal() {
 
                             {/* Password Input Field */}
                             <div>
-                                <label className="block text-slate-700 text-xs font-extrabold mb-1.5">Password</label>
+                                <label htmlFor="login-password" className="block text-slate-700 text-xs font-extrabold mb-1.5">Password</label>
                                 <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400" aria-hidden="true">
                                         <Lock className="w-4 h-4" />
                                     </span>
                                     <input
+                                        id="login-password"
+                                        name="password"
                                         type={showPassword ? 'text' : 'password'}
+                                        autoComplete={isRegister ? 'new-password' : 'current-password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
@@ -338,6 +349,7 @@ export default function LoginPortal() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                                         className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-650 outline-none"
                                     >
                                         {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
@@ -345,42 +357,43 @@ export default function LoginPortal() {
                                 </div>
                             </div>
 
-                            {/* Dropdown for Citizens only */}
-                            {role === 'CITIZEN' && (
-                                <div>
-                                    <label className="block text-slate-700 text-xs font-extrabold mb-1.5">Constituency / Area</label>
-                                    <div className="relative">
-                                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                            <MapPin className="w-4 h-4" />
-                                        </span>
-                                        <select
-                                            value={wardArea}
-                                            onChange={(e) => setWardArea(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 rounded-xl py-2.5 pl-9 pr-10 text-slate-700 text-sm outline-none transition-all cursor-pointer appearance-none"
-                                        >
-                                            <option value="Ward 1">Ward 1 - Sector Alpha</option>
-                                            <option value="Ward 2">Ward 2 - Sector Beta</option>
-                                            <option value="Ward 3">Ward 3 - Sector Gamma</option>
-                                            <option value="Ward 4">Ward 4 - Sector Delta</option>
-                                            <option value="Ward 5">Sector Epsilon (Demo Default)</option>
-                                            <option value="Ward 6">Ward 6 - Sector Zeta</option>
-                                        </select>
-                                        <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-450 text-[10px]">
-                                            ▼
-                                        </span>
-                                    </div>
+                            {/* Location field (city / service area) */}
+                            <div>
+                                <label htmlFor="login-location" className="block text-slate-700 text-xs font-extrabold mb-1.5">
+                                    {role === RECYCLER ? 'Service City / Area' : 'Your City / Area'}
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400" aria-hidden="true">
+                                        <MapPin className="w-4 h-4" />
+                                    </span>
+                                    <input
+                                        id="login-location"
+                                        name="location"
+                                        type="text"
+                                        autoComplete="address-level2"
+                                        maxLength={50}
+                                        value={location}
+                                        onChange={(e) => setLocation(e.target.value)}
+                                        placeholder="e.g. Indore"
+                                        className="w-full bg-white border border-slate-200 focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 rounded-xl py-2.5 pl-9 pr-4 text-slate-800 text-sm outline-none transition-all placeholder:text-slate-400"
+                                    />
                                 </div>
-                            )}
+                                <p className="text-[11px] text-slate-400 font-medium mt-1">
+                                    {role === RECYCLER
+                                        ? 'Used to match nearby lots and pickup requests.'
+                                        : 'Used to find nearby fair prices and recyclers.'}
+                                </p>
+                            </div>
 
                             {/* Sign In Primary Action Button */}
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-emerald-755 hover:bg-emerald-800 active:scale-[0.98] text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-805/10 flex justify-center items-center gap-1.5 focus:outline-none cursor-pointer mt-6"
+                                className="w-full bg-emerald-755 hover:bg-emerald-800 active:scale-[0.98] text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-805/10 flex justify-center items-center gap-1.5 focus:outline-none cursor-pointer mt-6 disabled:opacity-60"
                                 style={{ backgroundColor: '#2e7d32' }}
                             >
-                                <LogIn className="w-4 h-4" />
-                                {isRegister ? 'Sign Up' : 'Sign In'}
+                                <LogIn className="w-4 h-4" aria-hidden="true" />
+                                {loading ? 'Please wait...' : (isRegister ? 'Sign Up' : 'Sign In')}
                             </button>
                         </form>
 
@@ -393,10 +406,11 @@ export default function LoginPortal() {
 
                         {/* Register Toggle Outline Button */}
                         <button
+                            type="button"
                             onClick={() => setIsRegister(!isRegister)}
                             className="w-full border border-emerald-700 text-emerald-800 hover:bg-slate-50 py-3.5 rounded-xl text-sm font-bold transition-all flex justify-center items-center gap-1.5 cursor-pointer bg-white"
                         >
-                            <UserPlus className="w-4 h-4" />
+                            <UserPlus className="w-4 h-4" aria-hidden="true" />
                             {isRegister ? 'Already registered? Sign In' : "Don't have an account? Register"}
                         </button>
 
@@ -417,19 +431,21 @@ export default function LoginPortal() {
                 </div>
                 <div className="flex flex-wrap justify-center gap-3">
                     <button
-                        onClick={() => handleDemoLogin('CITIZEN')}
+                        type="button"
+                        onClick={() => handleDemoLogin(COLLECTOR)}
                         className="px-4 py-2 border border-emerald-400/40 hover:bg-emerald-900/50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all outline-none cursor-pointer"
                     >
-                        <User className="w-4 h-4 text-emerald-350" />
-                        Continue as Citizen
+                        <User className="w-4 h-4 text-emerald-350" aria-hidden="true" />
+                        Continue as Collector
                     </button>
 
                     <button
-                        onClick={() => handleDemoLogin('MP')}
+                        type="button"
+                        onClick={() => handleDemoLogin(RECYCLER)}
                         className="px-4 py-2 border border-emerald-400/40 hover:bg-emerald-900/50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all outline-none cursor-pointer"
                     >
-                        <BarChart3 className="w-4 h-4 text-emerald-350" />
-                        Continue as MP/Admin
+                        <Truck className="w-4 h-4 text-emerald-350" aria-hidden="true" />
+                        Continue as Recycler
                     </button>
                 </div>
             </footer>

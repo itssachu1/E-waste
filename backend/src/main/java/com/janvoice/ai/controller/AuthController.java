@@ -30,7 +30,9 @@ public class AuthController {
     private SessionTokenService sessionTokenService;
 
     /**
-     * User registration handler. Save citizen/MP profile details to database.
+     * User registration handler. Saves collector/recycler profile to database.
+     * Public registration allows COLLECTOR (default), CITIZEN (legacy alias of
+     * collector) and RECYCLER; any other requested role is downgraded to COLLECTOR.
      */
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody User user) {
@@ -39,8 +41,15 @@ public class AuthController {
                     .body(MapResponse("Username '" + user.getUsername() + "' is already taken."));
         }
 
-        // Public registration cannot provision privileged roles.
-        user.setRole("CITIZEN");
+        // Public registration cannot provision privileged roles (ADMIN/MP).
+        // Accept COLLECTOR (default), CITIZEN (legacy collector alias) and
+        // RECYCLER so the E-Waste Saathi login screen maps 1:1 to the backend.
+        String requested = user.getRole() == null ? "" : user.getRole().trim().toUpperCase();
+        if ("RECYCLER".equals(requested) || "CITIZEN".equals(requested) || "COLLECTOR".equals(requested)) {
+            user.setRole("CITIZEN".equals(requested) ? "CITIZEN" : requested);
+        } else {
+            user.setRole("COLLECTOR");
+        }
 
         // Save User
         User savedUser = userRepository.save(user);
