@@ -83,8 +83,9 @@ public class RecyclerDashboardServiceImpl implements RecyclerDashboardService {
 
     private void requireRecycler(User actor) {
         if (actor == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Valid session token required");
-        if (!"RECYCLER".equalsIgnoreCase(actor.getRole()) && !"VERIFIED_RECYCLER".equalsIgnoreCase(actor.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recycler role required");
-        }
+        // Allow explicit recycler roles OR any user who owns a recycler profile.
+        if ("RECYCLER".equalsIgnoreCase(actor.getRole()) || "VERIFIED_RECYCLER".equalsIgnoreCase(actor.getRole())) return;
+        boolean ownsProfile = recyclers.findAll().stream().anyMatch(r -> r.getCreatedBy() != null && r.getCreatedBy().equals(actor.getId()));
+        if (!ownsProfile) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recycler profile required");
     }
 }

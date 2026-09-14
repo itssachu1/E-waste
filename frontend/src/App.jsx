@@ -83,9 +83,11 @@ export default function App() {
     return <LoginPortal />;
   }
 
-  // Role detection from stored user
+  // Role detection from stored user. Note: registration always yields CITIZEN,
+  // so recycler-role users are identified by owning a recycler profile (detected
+  // via the recyclerSummary.has_profile flag after fetch).
   const role = user?.role || "";
-  const isRecycler = role === "RECYCLER" || role === "VERIFIED_RECYCLER";
+  const isRecyclerRole = role === "RECYCLER" || role === "VERIFIED_RECYCLER";
   const isCollector = role === "COLLECTOR" || role === "CITIZEN";
 
   const [active, setActive] = useState("home");
@@ -96,6 +98,7 @@ export default function App() {
   const [earnings, setEarnings] = useState(null);
   const [earningsStatus, setEarningsStatus] = useState("loading");
   const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [recyclerSummary, setRecyclerSummary] = useState(null);
   const [recentLots, setRecentLots] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [dashboardStatus, setDashboardStatus] = useState("loading");
@@ -169,6 +172,18 @@ export default function App() {
         setDashboardStatus("ready");
       })
       .catch(() => mounted && setDashboardStatus("error"));
+    return () => { mounted = false; };
+  }, [active]);
+
+  // Fetch recycler-specific dashboard stats when home view is active.
+  // Always fetch — the response's has_profile flag tells us whether the user
+  // owns a recycler profile (needed because registration always yields CITIZEN).
+  useEffect(() => {
+    if (active !== "home") return;
+    let mounted = true;
+    dashboardService.recyclerSummary()
+      .then(data => { if (mounted) setRecyclerSummary(data); })
+      .catch(() => { if (mounted) setRecyclerSummary(null); });
     return () => { mounted = false; };
   }, [active]);
 
@@ -282,12 +297,12 @@ export default function App() {
           <nav>
             {(() => {
               const items = [["home", TrendingUp], ["scan", Camera], ["prices", IndianRupee], ["recyclers", MapPin], ["lots", Package], ["transactions", Banknote], ["earnings", WalletCards], ["safety", ShieldAlert]];
-              if (isRecycler) {
+              if (isRecyclerRole || recyclerSummary?.has_profile === true) {
                 const idx = items.findIndex(i => i[0] === "earnings");
                 if (idx >= 0) items.splice(idx, 1);
                 items.push(["profile", ShieldCheck]);
               }
-              return items.map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={isRecycler && id === "profile" ? (hindi ? "मेरी प्रोफ़ाइल" : "My Profile") : language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />);
+              return items.map(([id, Icon], index) => <Nav key={id} active={active} id={id} label={(isRecyclerRole || recyclerSummary?.has_profile === true) && id === "profile" ? (hindi ? "मेरी प्रोफ़ाइल" : "My Profile") : language.nav[index]} icon={<Icon size={18} />} setActive={navigate} />);
             })()}
           </nav>
         </div>
@@ -335,10 +350,13 @@ function Nav({ active, id, label, icon, setActive }) {
 }
 
 function Dashboard({ summary, recyclerSummary, status, recyclerStatus, setActive, hindi, language }) {
-  // Detect role from stored user (same pattern as Lots component)
+  // Detect role from stored user OR from recycler profile ownership.
+  // Registration always yields CITIZEN, so users with a recycler profile
+  // are identified by the backend returning has_profile=true.
   let userRole = "";
   try { userRole = JSON.parse(localStorage.getItem("janvoice_user") || "{}").role || ""; } catch {}
-  const isRecycler = userRole === "RECYCLER" || userRole === "VERIFIED_RECYCLER";
+  const hasRecyclerProfile = recyclerSummary?.has_profile === true;
+  const isRecycler = userRole === "RECYCLER" || userRole === "VERIFIED_RECYCLER" || hasRecyclerProfile;
 
   if (isRecycler) {
     if (recyclerStatus === "loading") return <section className="content"><div className="empty panel"><span>{hindi ? "डैशबोर्ड लोड हो रहा है..." : "Loading dashboard..."}</span></div></section>;
