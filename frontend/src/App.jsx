@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Recycle, Camera, IndianRupee, MapPin, Package, WalletCards,
   ArrowRight, CheckCircle2, ShieldCheck, TrendingUp, QrCode,
@@ -8,6 +8,8 @@ import {
   Flame, FlaskConical, Monitor, TriangleAlert, Hand, PackageCheck, ShieldAlert, HeartPulse
 } from "lucide-react";
 import { materialService, priceService, recyclerService, lotService, transactionService, earningsService, dashboardService, scanService } from "./services/api";
+import { AuthContext } from "./context/AuthContext";
+import LoginPortal from "./views/LoginPortal";
 import "./App.css";
 
 const MATERIAL_ICONS = {
@@ -73,6 +75,13 @@ function priceSummary(records) {
 }
 
 export default function App() {
+  const { user, logout } = useContext(AuthContext);
+
+  // Not authenticated — show login portal
+  if (!user) {
+    return <LoginPortal />;
+  }
+
   const [active, setActive] = useState("home");
   const [lots, setLots] = useState([]);
   const [lotStatus, setLotStatus] = useState("loading");

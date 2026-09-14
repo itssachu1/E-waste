@@ -19,6 +19,23 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// On any 401 (invalid/expired token), clear the stale session and redirect to login.
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('janvoice_user');
+            // Redirect to root so the app re-evaluates auth state and shows login.
+            if (window.location.pathname !== '/') {
+                window.location.href = '/';
+            } else {
+                window.location.reload();
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 /**
  * REST Endpoint clients. Mapping backend controllers.
  */
