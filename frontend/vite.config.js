@@ -94,5 +94,8 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
+    // Allow all hosts in preview mode (Railway assigns dynamic domains).
+    // This does NOT affect `npm run dev` (local dev server config is separate above).
+    allowedHosts: true,
   },
 })
