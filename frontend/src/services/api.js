@@ -176,6 +176,13 @@ export const recyclerProfileService = {
         const response = await api.get('/recyclers/me');
         return response.data;
     },
+    // First-time setup: create the profile owned by the signed-in recycler.
+    // The backend stores it as PENDING_VERIFICATION until an admin verifies it
+    // (404 from /recyclers/me simply means "no profile yet").
+    create: async (profile) => {
+        const response = await api.post('/recyclers', profile);
+        return response.data;
+    },
 };
 
 export const scanService = {

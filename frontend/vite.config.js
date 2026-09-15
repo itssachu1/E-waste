@@ -20,20 +20,30 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         icons: [
+          // Absolute (site-root) paths so icon URLs are unambiguous on any host,
+          // and separate any/maskable entries — the glyphs are drawn inside the
+          // maskable safe zone (fixes "resource isn't a valid image" manifest
+          // errors: the previous pwa-512x512.png had an invalid 0x0 IHDR).
           {
-            src: 'pwa-192x192.png',
+            src: '/pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: '/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

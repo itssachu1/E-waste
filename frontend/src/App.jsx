@@ -246,11 +246,34 @@ export default function App() {
     setRecyclerProfileStatus("loading");
     recyclerProfileService.me()
       .then(data => { if (mounted) { setRecyclerProfile(data); setRecyclerProfileStatus("ready"); } })
-      .catch(() => { if (mounted) setRecyclerProfileStatus("error"); });
+      .catch(error => {
+        if (!mounted) return;
+        // 404 = this account simply has no recycler profile yet (fresh signup).
+        // That is an expected first-run state, so show the setup form instead of
+        // an error panel (fixes the /api/recyclers/me 404 glitch).
+        setRecyclerProfileStatus(error?.response?.status === 404 ? "none" : "error");
+      });
     return () => { mounted = false; };
   }, [isRecycler]);
 
   const notify = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 4500); };
+
+  // First-time recycler setup: POST /api/recyclers creates the profile owned by
+  // the signed-in user (PENDING_VERIFICATION until an admin verifies it), then
+  // the profile and the recycler dashboard aggregates are refreshed in place.
+  const handleRecyclerProfileCreated = async (payload) => {
+    try {
+      const created = await recyclerProfileService.create(payload);
+      setRecyclerProfile(created);
+      setRecyclerProfileStatus("ready");
+      dashboardService.recyclerSummary()
+        .then(data => setRecyclerSummary(data))
+        .catch(() => {});
+      notify(hindi ? "प्रोफ़ाइल भेज दी गई — सत्यापन की प्रतीक्षा।" : "Profile submitted — awaiting verification.");
+    } catch (error) {
+      notify(error.response?.data?.detail || (hindi ? "प्रोफ़ाइल नहीं बन सकी। कृपया पुनः प्रयास करें।" : "Unable to create the profile. Please try again."));
+    }
+  };
 
   const onPhotoSelected = (file) => {
     if (!file) return;
@@ -374,7 +397,7 @@ export default function App() {
         {active === "transactions" && <Transactions lots={lots} transactions={transactions} status={transactionStatus} refreshLedger={refreshLedger} hindi={hindi} />}
         {active === "earnings" && <Earnings earnings={earnings} status={earningsStatus} transactions={transactions} hindi={hindi} />}
         {active === "safety" && <Safety hindi={hindi} setActive={navigate} />}
-        {active === "profile" && <RecyclerProfile profile={recyclerProfile} status={recyclerProfileStatus} hindi={hindi} />}
+        {active === "profile" && <RecyclerProfile profile={recyclerProfile} status={recyclerProfileStatus} hindi={hindi} materials={materials} onCreated={handleRecyclerProfileCreated} />}
       </main>
 
       <button className="mobile-scan" onClick={() => navigate("scan")}><Camera size={19} /> {hindi ? "स्कैन" : "Scan"}</button>
@@ -386,7 +409,7 @@ function Nav({ active, id, label, icon, setActive }) {
   return <button className={active === id ? "nav active" : "nav"} onClick={() => setActive(id)}>{icon}<span>{label}</span>{active === id && <ChevronRight size={15} />}</button>;
 }
 
-function Dashboard({ summary, recyclerSummary, status, recyclerStatus, setActive, hindi, language }) {
+function Dashboard({ summary, recyclerSummary, recentLots, recentTransactions, status, recyclerStatus, setActive, hindi, language }) {
   // Detect role from stored user OR from recycler profile ownership.
   // Registration always yields CITIZEN, so users with a recycler profile
   // are identified by the backend returning has_profile=true.
