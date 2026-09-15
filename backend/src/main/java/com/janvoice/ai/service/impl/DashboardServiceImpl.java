@@ -115,10 +115,25 @@ public class DashboardServiceImpl implements DashboardService {
         return map;
     }
 
+    /**
+     * Collector dashboards are open to collector accounts (COLLECTOR/CITIZEN)
+     * and to verified recycler accounts. Every aggregate above is scoped to the
+     * authenticated actor, so a recycler receives its own (usually empty)
+     * collector totals instead of a hard 403. Recycler-specific figures are
+     * served by /api/dashboard/recycler-summary.
+     */
     private void requireCollector(User actor) {
         if (actor == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Valid session token required");
-        if (!"COLLECTOR".equalsIgnoreCase(actor.getRole()) && !"CITIZEN".equalsIgnoreCase(actor.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Collector role required");
+        if (!isCollector(actor) && !isRecycler(actor)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Collector or recycler role required");
         }
+    }
+
+    private boolean isCollector(User actor) {
+        return "COLLECTOR".equalsIgnoreCase(actor.getRole()) || "CITIZEN".equalsIgnoreCase(actor.getRole());
+    }
+
+    private boolean isRecycler(User actor) {
+        return "RECYCLER".equalsIgnoreCase(actor.getRole()) || "VERIFIED_RECYCLER".equalsIgnoreCase(actor.getRole());
     }
 }
