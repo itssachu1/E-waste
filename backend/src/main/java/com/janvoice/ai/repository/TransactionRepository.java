@@ -24,6 +24,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.lot.recycler.id = :recyclerId AND t.paymentStatus = :status")
     long countByRecyclerIdAndStatus(@Param("recyclerId") Long recyclerId, @Param("status") Transaction.PaymentStatus status);
 
+// Recycler-scoped aggregates for the recycler's own ledger/earnings view.
+    // Scoped by t.recycler (the party recorded on the transaction) so the totals
+    // always match the rows returned by findByRecycler_CreatedByOrderByCreatedAtDesc.
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.recycler.id = :recyclerId AND t.paymentStatus = :status")
+    BigDecimal sumAmountByRecyclerIdAndStatus(@Param("recyclerId") Long recyclerId, @Param("status") Transaction.PaymentStatus status);
+
+    @Query("SELECT COALESCE(SUM(COALESCE(t.lot.finalWeight, t.lot.approximateWeight)), 0) FROM Transaction t WHERE t.recycler.id = :recyclerId AND t.paymentStatus = :status")
+    BigDecimal sumWeightByRecyclerIdAndStatus(@Param("recyclerId") Long recyclerId, @Param("status") Transaction.PaymentStatus status);
+
+    // Platform-wide aggregates (admin console).
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.paymentStatus = :status")
+    BigDecimal sumAmountByStatus(@Param("status") Transaction.PaymentStatus status);
+
+    @Query("SELECT COALESCE(SUM(COALESCE(t.lot.finalWeight, t.lot.approximateWeight)), 0) FROM Transaction t WHERE t.paymentStatus = :status")
+    BigDecimal sumWeightByStatus(@Param("status") Transaction.PaymentStatus status);
+
+    long countByPaymentStatus(Transaction.PaymentStatus status);
     // Bulk aggregates computed in the database (uses idx_transactions_collector /
     // idx_transactions_payment_status) — never loaded into memory.
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.collector = :collector AND t.paymentStatus = :status")

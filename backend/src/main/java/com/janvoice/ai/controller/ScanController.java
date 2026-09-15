@@ -8,7 +8,6 @@ import com.janvoice.ai.service.MaterialMasterService;
 import com.janvoice.ai.service.SessionTokenService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @RestController
 @RequestMapping("/api/scan")
-@CrossOrigin(origins = "*")
 public class ScanController {
 
     private static final long MAX_CALLS_PER_MINUTE = 10;

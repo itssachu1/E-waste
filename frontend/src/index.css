@@ -1,0 +1,38 @@
+/*
+ * Global stylesheet entry — imported by src/main.jsx.
+ *
+ * IMPORTANT: this file is the Tailwind CSS v4 entry point. Tailwind only emits
+ * utility + preflight CSS for files it actually processes, and utilities are
+ * generated solely from the sources declared below. If this file is emptied
+ * (or the @import is removed) the login screen and every other Tailwind-based
+ * view (LoginPortal, RecyclerProfile, ...) renders as raw unstyled HTML, even
+ * though `npm run build` still succeeds and still emits a stylesheet.
+ *
+ * Keep `@import "tailwindcss";` as the first statement: `postcss.config.js`
+ * wires it to `@tailwindcss/postcss`.
+ */
+@import "tailwindcss";
+
+/* Sources scanned for utility class usage (explicit, so utilities are emitted
+ * even when automatic source detection is unavailable in the builder). */
+@source "../index.html";
+@source "./**/*.{js,jsx}";
+
+/* Brand palette (mirrors tailwind.config.js) exposed as Tailwind v4 theme
+ * variables, so `bg-brand-500`, `text-brand-700`, ... utilities work. */
+@theme {
+  --color-brand-50: #f0f7ff;
+  --color-brand-100: #e0effe;
+  --color-brand-200: #bae0fd;
+  --color-brand-300: #7cc8fc;
+  --color-brand-400: #38acf8;
+  --color-brand-500: #0e91e9;
+  --color-brand-600: #0273c7;
+  --color-brand-700: #035ca1;
+  --color-brand-800: #074f85;
+  --color-brand-900: #0c426e;
+  --color-brand-950: #082a49;
+
+  /* Application primary green used throughout App.css. */
+  --color-primary: #168448;
+}

@@ -13,7 +13,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/prices")
-@CrossOrigin(origins = "*")
 public class PriceRecordController {
     private final PriceRecordService service;
     private final SessionTokenService sessionTokenService;

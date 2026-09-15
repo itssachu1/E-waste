@@ -143,9 +143,25 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([transactionService.getAll(), earningsService.get()])
-      .then(([transactionData, earningsData]) => { if (mounted) { setTransactions(Array.isArray(transactionData) ? transactionData : []); setEarnings(earningsData); setTransactionStatus("ready"); setEarningsStatus("ready"); } })
-      .catch(() => { if (mounted) { setTransactionStatus("error"); setEarningsStatus("error"); } });
+    // Independent fetches: a failure on one endpoint (for example a role
+    // specific 403) must never blank out the other view, so each result is
+    // handled on its own instead of a single all-or-nothing Promise.all.
+    Promise.allSettled([transactionService.getAll(), earningsService.get()])
+      .then(([transactionsResult, earningsResult]) => {
+        if (!mounted) return;
+        if (transactionsResult.status === "fulfilled") {
+          setTransactions(Array.isArray(transactionsResult.value) ? transactionsResult.value : []);
+          setTransactionStatus("ready");
+        } else {
+          setTransactionStatus("error");
+        }
+        if (earningsResult.status === "fulfilled") {
+          setEarnings(earningsResult.value);
+          setEarningsStatus("ready");
+        } else {
+          setEarningsStatus("error");
+        }
+      });
     return () => { mounted = false; };
   }, []);
 
@@ -170,15 +186,17 @@ export default function App() {
     if (active !== "home") return;
     let mounted = true;
     setDashboardStatus("loading");
-    Promise.all([dashboardService.summary(), dashboardService.recentLots(5), dashboardService.recentTransactions(5)])
-      .then(([summary, lotsData, txData]) => {
+    // Dashboard panels are fetched in parallel but settled independently: a
+    // single failing endpoint (role restricted stats, empty profile, ...) must
+    // not replace the whole dashboard with an error state.
+    Promise.allSettled([dashboardService.summary(), dashboardService.recentLots(5), dashboardService.recentTransactions(5)])
+      .then(([summaryResult, lotsResult, transactionsResult]) => {
         if (!mounted) return;
-        setDashboardSummary(summary);
-        setRecentLots(Array.isArray(lotsData) ? lotsData : []);
-        setRecentTransactions(Array.isArray(txData) ? txData : []);
-        setDashboardStatus("ready");
-      })
-      .catch(() => mounted && setDashboardStatus("error"));
+        if (summaryResult.status === "fulfilled") setDashboardSummary(summaryResult.value);
+        if (lotsResult.status === "fulfilled") setRecentLots(Array.isArray(lotsResult.value) ? lotsResult.value : []);
+        if (transactionsResult.status === "fulfilled") setRecentTransactions(Array.isArray(transactionsResult.value) ? transactionsResult.value : []);
+        setDashboardStatus(summaryResult.status === "fulfilled" ? "ready" : "error");
+      });
     return () => { mounted = false; };
   }, [active]);
 
@@ -285,11 +303,23 @@ export default function App() {
 
   const navigate = (id) => { setActive(id); setMobileMenu(false); };
   const refreshLedger = async () => {
-    const [transactionData, earningsData] = await Promise.all([transactionService.getAll(), earningsService.get()]);
-    setTransactions(Array.isArray(transactionData) ? transactionData : []);
-    setEarnings(earningsData);
-    setTransactionStatus("ready");
-    setEarningsStatus("ready");
+    setTransactionStatus("loading");
+    setEarningsStatus("loading");
+    // Refresh both panels independently (see the mount effect) so a failure on
+    // one endpoint cannot leave the other panel stuck in its loading state.
+    const [transactionsResult, earningsResult] = await Promise.allSettled([transactionService.getAll(), earningsService.get()]);
+    if (transactionsResult.status === "fulfilled") {
+      setTransactions(Array.isArray(transactionsResult.value) ? transactionsResult.value : []);
+      setTransactionStatus("ready");
+    } else {
+      setTransactionStatus("error");
+    }
+    if (earningsResult.status === "fulfilled") {
+      setEarnings(earningsResult.value);
+      setEarningsStatus("ready");
+    } else {
+      setEarningsStatus("error");
+    }
   };
 
   return (

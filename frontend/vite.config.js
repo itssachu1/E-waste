@@ -42,6 +42,13 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // A stale precache is exactly how a deployment keeps serving the previous
+        // index.html (pointing at CSS/JS asset names that no longer exist, which
+        // renders the app unstyled). These three flags make every new deployment
+        // take control immediately and drop superseded caches.
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -74,7 +81,10 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: true,
+        // Disabled on purpose: the development service worker wrote the tracked
+        // frontend/dev-dist/ bundle, which could be deployed by accident and then
+        // serve stale HTML/CSS from a cache. Production builds are unaffected.
+        enabled: false,
         type: 'module'
       }
     })

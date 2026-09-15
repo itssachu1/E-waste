@@ -16,11 +16,12 @@ import java.util.Optional;
 /**
  * REST controller exposure for authentication routing (Registration, Login,
  * Demo profiles).
- * CrossOrigin whitelisting is added (further handled by CorsConfig).
+ * CORS is configured centrally by CorsConfig. Per-controller @CrossOrigin
+ * overrides were removed: Spring merges them with the global configuration, and
+ * a merged "*"/credentials combination makes every preflight fail.
  */
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired

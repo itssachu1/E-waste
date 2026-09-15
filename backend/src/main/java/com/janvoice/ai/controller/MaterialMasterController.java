@@ -9,7 +9,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/materials")
-@CrossOrigin(origins = "*")
 public class MaterialMasterController {
 
     private final MaterialMasterService materialMasterService;

@@ -15,7 +15,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/recyclers")
-@CrossOrigin(origins = "*")
 public class RecyclerController {
     private final RecyclerService service;
     private final SessionTokenService tokens;

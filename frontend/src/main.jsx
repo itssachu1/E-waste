@@ -1,7 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+// Base layer FIRST (Tailwind preflight + utilities from src/index.css), then the
+// application component sheet (App.css, imported by App.jsx) so app rules win
+// ties. Reordering these two lines changes cascade order — keep as is.
 import './index.css'
+import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 
 // PWA Install Prompt Handling

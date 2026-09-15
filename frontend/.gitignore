@@ -16,6 +16,14 @@ dist-ssr
 test-results
 playwright-report
 
+# PWA development service worker output (generated, must never be committed:
+# a committed/stale copy can be served instead of the current build).
+dev-dist
+
+# Stale HTML backups of a previous index.html
+index.html.save*
+*.html.save*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

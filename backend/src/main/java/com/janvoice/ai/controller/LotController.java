@@ -14,7 +14,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/lots")
-@CrossOrigin(origins = "*")
 public class LotController {
     private final LotService service;
     private final SessionTokenService tokens;

@@ -4,6 +4,7 @@ import com.janvoice.ai.dto.TransactionRequest;
 import com.janvoice.ai.dto.TransactionStatusRequest;
 import com.janvoice.ai.entity.*;
 import com.janvoice.ai.repository.LotRepository;
+import com.janvoice.ai.repository.RecyclerRepository;
 import com.janvoice.ai.repository.TransactionRepository;
 import com.janvoice.ai.service.TransactionService;
 import jakarta.transaction.Transactional;
@@ -19,8 +20,9 @@ import java.util.stream.Collectors;
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactions;
     private final LotRepository lots;
+    private final RecyclerRepository recyclers;
 
-    public TransactionServiceImpl(TransactionRepository transactions, LotRepository lots) { this.transactions = transactions; this.lots = lots; }
+    public TransactionServiceImpl(TransactionRepository transactions, LotRepository lots, RecyclerRepository recyclers) { this.transactions = transactions; this.lots = lots; this.recyclers = recyclers; }
 
     @Override @Transactional
     public Map<String,Object> create(TransactionRequest request, User actor) {
@@ -75,14 +77,60 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override @Transactional
     public Map<String,Object> earnings(User actor) {
-        requireAuthenticated(actor); if (!"COLLECTOR".equalsIgnoreCase(actor.getRole()) && !"CITIZEN".equalsIgnoreCase(actor.getRole())) throw forbidden("Collector role required");
-        // Aggregates run in the database (indexed SUM/COUNT) — collect only the collector's own rows.
-        BigDecimal total = transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID);
-        BigDecimal pending = transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PENDING);
-        BigDecimal kg = transactions.sumWeightByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID);
-        long paid = transactions.countByCollectorAndPaymentStatus(actor, Transaction.PaymentStatus.PAID);
-        Map<String,Object> result = new LinkedHashMap<>(); result.put("total_earnings", total); result.put("pending_amount", pending); result.put("total_kg_collected", kg); result.put("completed_handovers_count", paid); return result;
+        requireAuthenticated(actor);
+        // Every authenticated user gets figures scoped to them — no role based 403.
+        // The previous "Collector role required" gate rejected real (non-demo)
+        // Recycler accounts, which is why recycler logins saw a failing earnings
+        // request while the demo profiles (which never call the API) worked fine.
+        if (isRecycler(actor)) return recyclerEarnings(actor);
+        if (isCollector(actor)) return collectorEarnings(actor);
+        return platformEarnings();
     }
+
+    /** Collectors/citizens: what this user has earned from their handovers. */
+    private Map<String,Object> collectorEarnings(User actor) {
+        // Aggregates run in the database (indexed SUM/COUNT) — only the collector's own rows.
+        return earningsResponse(
+                transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID),
+                transactions.sumAmountByCollectorAndStatus(actor, Transaction.PaymentStatus.PENDING),
+                transactions.sumWeightByCollectorAndStatus(actor, Transaction.PaymentStatus.PAID),
+                transactions.countByCollectorAndPaymentStatus(actor, Transaction.PaymentStatus.PAID));
+    }
+
+    /**
+     * Recyclers: the same four figures describe settlement with the platform
+     * (amount already paid for received lots, amount still pending, volume
+     * received, settled lots), scoped to the recycler profile this user owns.
+     */
+    private Map<String,Object> recyclerEarnings(User actor) {
+        Long recyclerId = recyclers.findFirstByCreatedBy(actor.getId()).map(Recycler::getId).orElse(null);
+        if (recyclerId == null) return earningsResponse(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L);
+        return earningsResponse(
+                transactions.sumAmountByRecyclerIdAndStatus(recyclerId, Transaction.PaymentStatus.PAID),
+                transactions.sumAmountByRecyclerIdAndStatus(recyclerId, Transaction.PaymentStatus.PENDING),
+                transactions.sumWeightByRecyclerIdAndStatus(recyclerId, Transaction.PaymentStatus.PAID),
+                transactions.countByRecyclerIdAndStatus(recyclerId, Transaction.PaymentStatus.PAID));
+    }
+
+    /** Admin console: platform-wide totals. */
+    private Map<String,Object> platformEarnings() {
+        return earningsResponse(
+                transactions.sumAmountByStatus(Transaction.PaymentStatus.PAID),
+                transactions.sumAmountByStatus(Transaction.PaymentStatus.PENDING),
+                transactions.sumWeightByStatus(Transaction.PaymentStatus.PAID),
+                transactions.countByPaymentStatus(Transaction.PaymentStatus.PAID));
+    }
+
+    private Map<String,Object> earningsResponse(BigDecimal total, BigDecimal pending, BigDecimal kg, long paid) {
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("total_earnings", total == null ? BigDecimal.ZERO : total);
+        result.put("pending_amount", pending == null ? BigDecimal.ZERO : pending);
+        result.put("total_kg_collected", kg == null ? BigDecimal.ZERO : kg);
+        result.put("completed_handovers_count", paid);
+        return result;
+    }
+
+    private boolean isCollector(User actor){ return "COLLECTOR".equalsIgnoreCase(actor.getRole()) || "CITIZEN".equalsIgnoreCase(actor.getRole()); }
 
     private boolean eligible(Lot.Status status){ return status == Lot.Status.READY_FOR_HANDOVER || status == Lot.Status.HANDED_OVER; }
     private boolean isRecycler(User actor){ return "RECYCLER".equalsIgnoreCase(actor.getRole()) || "VERIFIED_RECYCLER".equalsIgnoreCase(actor.getRole()); }
